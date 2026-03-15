@@ -1,0 +1,38 @@
+\chapter{Conclusão}
+
+O presente trabalho replicou a arquitetura do modelo \textit{NeuralFactors} 
+de \textcite{gopal2024} e a aplicou ao mercado acionário brasileiro, com o 
+objetivo de avaliar seu desempenho em termos de qualidade probabilística da 
+distribuição estimada, previsão de covariância, calibração de risco e 
+desempenho de carteiras de mínima variância. A estrutura do modelo foi 
+implementada integralmente, incluindo o \textit{Stock Embedder}, o 
+\textit{Decoder} e o mecanismo de inferência variacional baseado no CIWAE, 
+preservando as escolhas arquiteturais e os hiperparâmetros descritos no 
+artigo original.
+
+Os resultados obtidos nesta versão, contudo, não permitem avaliação conclusiva 
+do desempenho do modelo. As métricas reportadas no Capítulo 4 refletem 
+inconsistências no pipeline de dados que comprometem a comparação entre o 
+\textit{NeuralFactors} e o modelo de referência — em particular, a diferença 
+no número de datas avaliadas entre os dois modelos e os erros de calibração 
+de VaR de magnitude claramente anômala. Esses resultados são tratados como 
+diagnóstico do estado atual da implementação, e não como evidência sobre a 
+adequação do modelo ao mercado brasileiro.
+
+Dois aprimoramentos principais estão previstos para a versão final do trabalho. 
+O primeiro diz respeito à qualidade da base de dados: a fonte atual apresenta 
+cobertura insuficiente para parte dos ativos e do período analisado, e será 
+substituída por uma fonte com menor proporção de dados ausentes. O segundo 
+aprimoramento concerne à composição do universo de ativos: a versão atual 
+utiliza uma composição fixa do IBrX-100, sujeita a \textit{survivorship bias}, 
+e será substituída pela metodologia de constituintes \textit{point-in-time} 
+adotada no artigo original, que reconstrói a composição histórica do índice 
+em cada data de forma a reproduzir fielmente o conjunto de informações 
+disponível ao investidor no momento da decisão.
+
+A correção dessas limitações é condição necessária para que os resultados 
+sejam interpretáveis. Uma vez obtida uma base de dados adequada, será possível 
+avaliar com rigor se o \textit{NeuralFactors} mantém, no contexto do mercado 
+brasileiro, as propriedades que o distinguem de abordagens lineares no mercado 
+norte-americano — e em que medida as características estruturais do mercado 
+local influenciam esse desempenho.

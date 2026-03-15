@@ -67,12 +67,68 @@ A evolução do \textit{factor investing} reflete, portanto, a maturidade de uma
 
 \section{O Modelo \textit{NeuralFactors}}
 
-\textcite{gopal2024} apresenta uma reformulação da análise fatorial voltada para a estimação direta dos fatores a partir dos dados de retornos. O modelo, denominado \textit{NeuralFactors}, parte do princípio central da teoria fatorial: os retornos de um ativo podem ser decompostos em uma componente sistemática, associada a fatores comuns, e uma componente idiossincrática. A diferença está no procedimento de identificação dos fatores. Em vez de defini-los a partir de características previamente escolhidas, como valor ou tamanho, o modelo aprende esses vetores de risco de forma endógena, com base nas correlações e covariâncias observadas nos dados.
+\textcite{gopal2024} apresenta uma reformulação da análise fatorial voltada 
+para a estimação direta dos fatores a partir dos dados de retornos. O modelo, 
+denominado \textit{NeuralFactors}, parte do princípio central da teoria 
+fatorial: os retornos de um ativo podem ser decompostos em uma componente 
+sistemática, associada a fatores comuns, e uma componente idiossincrática. A 
+diferença está no procedimento de identificação dos fatores. Em vez de 
+defini-los a partir de características previamente escolhidas, como valor ou 
+tamanho, o modelo aprende esses vetores de risco de forma endógena, com base 
+nas correlações e covariâncias observadas nos dados.
 
-Nos modelos clássicos, como os de \textcite{fama1993} e \textcite{carhart1997}, os fatores são construídos de maneira exógena, por meio de portfólios que representam estilos de investimento específicos. Essa abordagem depende de hipóteses fixas sobre quais características geram prêmios de risco e de relações essencialmente lineares entre fatores e retornos. O \textit{NeuralFactors} substitui esse processo por uma estrutura de rede neural probabilística treinada para reproduzir a matriz de covariância dos ativos. O treinamento gera simultaneamente os retornos dos fatores e as exposições individuais, mantendo a decomposição clássica entre risco sistemático e idiossincrático, mas obtendo-a de forma inteiramente data-driven.
+Nos modelos clássicos, como os de \textcite{fama1993} e \textcite{carhart1997}, 
+os fatores são construídos de maneira exógena, por meio de portfólios que 
+representam estilos de investimento específicos. Essa abordagem depende de 
+hipóteses fixas sobre quais características geram prêmios de risco e de 
+relações essencialmente lineares entre fatores e retornos. O 
+\textit{NeuralFactors} substitui esse processo por uma estrutura probabilística 
+na qual os fatores não são portfólios observáveis, mas variáveis latentes que 
+emergem do próprio padrão de dependência observado nos dados. A decomposição 
+clássica entre risco sistemático e idiossincrático é preservada, mas os fatores 
+passam a ser obtidos como resultado de um processo de aprendizado estatístico, 
+e não como construções definidas a priori pelo pesquisador.
 
-O modelo pode ser entendido como uma generalização da análise fatorial tradicional, na qual a relação entre fatores e retornos não é imposta por especificações paramétricas fixas. Ao inferir os fatores a partir dos dados, o \textit{NeuralFactors} incorpora a possibilidade de interações não lineares e de mudanças no padrão de dependência entre ativos, ajustando-se de forma automática à estrutura contemporânea dos mercados. Essa característica o torna adequado a ambientes de alta dimensionalidade, nos quais o número de ativos e as relações entre eles tornam-se complexos demais para serem descritos por modelos lineares.
+Essa mudança de perspectiva tem implicações econômicas concretas. Modelos 
+baseados em regressão estimam exposições fatoriais e retornos esperados, mas 
+não caracterizam a incerteza associada a essas estimativas nem descrevem o 
+comportamento conjunto dos ativos em cenários extremos. Ao tratar os retornos 
+como realizações de uma distribuição de probabilidade condicional — e não apenas 
+como valores a serem previstos pontualmente —, o \textit{NeuralFactors} permite 
+quantificar a estrutura de dependência entre ativos de forma mais completa, 
+incluindo correlações em períodos de estresse e a espessura das caudas da 
+distribuição. Essa capacidade é precisamente o que torna o modelo útil para 
+aplicações em gestão de risco e otimização de portfólios, nos quais a 
+distribuição completa dos retornos importa tanto quanto sua média. Como os 
+fatores são latentes e precisam ser inferidos a partir dos retornos observados, 
+a estimação do modelo exige métodos de aprendizado probabilístico que serão 
+detalhados na metodologia.
 
-Os resultados apresentados por \textcite{gopal2024} indicam que o modelo supera abordagens lineares tradicionais em tarefas de previsão de risco e de covariância. A capacidade de extrair fatores latentes diretamente dos dados melhora a representação das dependências entre ativos e reflete com mais precisão as flutuações da estrutura de risco. Embora empregue técnicas de aprendizado de máquina, o modelo preserva a lógica conceitual do \textit{factor investing}: explicar os retornos por meio de exposições comuns a fontes sistemáticas de risco.
+O modelo pode ser entendido como uma generalização da análise fatorial 
+tradicional, na qual a relação entre fatores e retornos não é imposta por 
+especificações paramétricas fixas. Ao inferir os fatores a partir dos dados, o 
+\textit{NeuralFactors} incorpora a possibilidade de mudanças no padrão de 
+dependência entre ativos ao longo do tempo, ajustando-se de forma automática às 
+condições correntes do mercado. Essa característica o torna adequado a ambientes 
+de alta dimensionalidade, nos quais o número de ativos e as relações entre eles 
+tornam-se complexos demais para serem descritos por estruturas lineares estáticas.
 
-A formulação de Gopal representa a continuidade natural da literatura sobre modelos multifatoriais. Ela mantém os fundamentos da teoria fatorial, mas substitui o processo de estimação baseado em regressões lineares por um mecanismo de aprendizado estatístico capaz de lidar com a dimensionalidade e a complexidade dos mercados atuais. Essa proposta encerra a revisão de literatura, estabelecendo o elo entre a tradição do \textit{factor investing} e as abordagens contemporâneas orientadas por dados que fundamentam a análise empírica deste trabalho.
+Os resultados apresentados por \textcite{gopal2024} indicam que o modelo supera 
+abordagens lineares tradicionais em tarefas de previsão das correlações entre 
+ativos e da precisão na estimação da estrutura de risco ao longo do tempo. A 
+capacidade de extrair fatores latentes diretamente dos dados melhora a 
+representação das dependências entre ativos e reflete com mais precisão as 
+flutuações do risco conjunto. Embora empregue técnicas de aprendizado de 
+máquina, o modelo preserva a lógica conceitual do \textit{factor investing}: 
+explicar os retornos por meio de exposições comuns a fontes sistemáticas de 
+risco.
+
+A formulação de \textcite{gopal2024} representa a continuidade natural da 
+literatura sobre modelos multifatoriais. Ela mantém os fundamentos da teoria 
+fatorial, mas substitui o processo de estimação baseado em regressões lineares 
+por um mecanismo de aprendizado estatístico capaz de lidar com a 
+dimensionalidade e a complexidade dos mercados atuais. A metodologia apresentada 
+no capítulo seguinte formaliza como esse aprendizado é conduzido na prática — 
+especificando de que forma a estrutura fatorial clássica é preservada dentro de 
+um arcabouço probabilístico e como os fatores latentes são simultaneamente 
+aprendidos e inferidos a partir dos dados.

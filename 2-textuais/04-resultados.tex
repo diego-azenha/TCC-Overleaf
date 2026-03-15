@@ -55,9 +55,15 @@ A distinção entre as duas métricas é relevante porque um modelo pode ajustar
 
 No artigo original, a NLL$_{\text{joint}}$ e a NLL$_{\text{ind}}$ são calculadas utilizando amostragem do posterior e do prior com diferentes números de simulações, assegurando aproximações precisas das integrais envolvidas. A mesma metodologia é adotada neste trabalho para garantir comparabilidade entre resultados.
 
-\textbf{[Inserir aqui Tabela correspondente aos valores de NLL para validação e teste.]}
+\input{figuras/table_nll}
 
-Os resultados permitem avaliar simultaneamente a qualidade estatística da distribuição aprendida e sua estabilidade fora da amostra. Valores consistentemente menores no conjunto de teste indicam que o modelo generaliza adequadamente e captura de forma robusta a estrutura probabilística dos retornos.
+{\color{red}Os resultados apresentados na Tabela \ref{tab:nll} refletem o estado atual da base de dados preliminar e não devem ser interpretados como indicativos 
+do desempenho real dos modelos. A diferença de escala entre o 
+\textit{NeuralFactors} e o PPCA, com NLL$_{\text{joint}}$ médias de 11.614 
+e 68 respectivamente, e a discrepância no número de datas avaliadas indicam 
+inconsistências no pipeline de dados que comprometem qualquer comparação 
+direta entre os modelos nesta versão. Uma discussão substantiva dos resultados 
+será conduzida na versão final do trabalho, após a correção da base de dados.}
 
 %##################################
 
@@ -90,9 +96,15 @@ de modo que, sob especificação correta, a matriz de covariância de $\tilde{r}
 
 A qualidade da previsão é então medida por duas estatísticas. A primeira é o erro quadrático médio (MSE) entre a matriz de covariância estimada dos retornos \textit{whitened} e a identidade. A segunda é a estatística de Box’s M, que avalia formalmente a equivalência entre matrizes de covariância. Essas duas métricas capturam, respectivamente, a magnitude média do erro e a consistência estrutural da matriz prevista.
 
-Os resultados estão apresentados na Tabela \ref{tab:cov}. Observa-se que o \textit{NeuralFactors} apresenta valores inferiores tanto de MSE quanto da estatística de Box’s M em comparação com os modelos alternativos, indicando melhor ajuste da estrutura de dependência entre ativos, tanto no conjunto de validação quanto no de teste.
+\input{figuras/table_covariance}
 
-\textbf{[Inserir aqui Tabela de previsão de covariância.]}
+{\color{red}Os resultados apresentados na Tabela \ref{tab:cov} refletem o estado atual da base de dados preliminar e não devem ser interpretados como indicativos 
+do desempenho real dos modelos. Embora a direção dos resultados seja 
+favorável ao \textit{NeuralFactors} — com MSE médio de 0,000003 contra 
+0,000041 do PPCA —, a discrepância no número de datas avaliadas entre os 
+dois modelos impede qualquer comparação direta nesta versão. Uma discussão 
+substantiva dos resultados será conduzida na versão final do trabalho, após 
+a correção da base de dados.}
 
 A precisão da matriz de covariância é particularmente relevante porque ela constitui insumo direto para problemas de alocação ótima de portfólio. Como será discutido na subseção seguinte, melhorias estatísticas na modelagem da covariância tendem a se refletir em ganhos econômicos na otimização de risco.
 
@@ -119,9 +131,11 @@ Reportam-se duas medidas de calibração. A primeira, denominada \textbf{Uni.}, 
 
 Os resultados estão apresentados na Tabela \ref{tab:var}. Observa-se que, no conjunto de validação, o desempenho do modelo é competitivo, embora inferior a algumas especificações alternativas em determinados cenários. No conjunto de teste, entretanto, o \textit{NeuralFactors} apresenta melhora substancial na calibração univariada e desempenho comparável na calibração do portfólio.
 
-\textbf{[Inserir aqui Tabela de calibração do VaR]}
+\input{figuras/table_var}
 
-Os resultados indicam que, embora o modelo capture adequadamente a estrutura de dependência e apresente desempenho superior na previsão de covariância, a modelagem das caudas ainda pode ser aprimorada. Essa evidência sugere que melhorias futuras podem estar associadas a especificações alternativas para a distribuição dos fatores ou para o componente idiossincrático.
+{\color{red}Os resultados apresentados na Tabela \ref{tab:var} refletem o estado atual da base de dados preliminar e não devem ser interpretados como indicativos 
+do desempenho real dos modelos. Os erros de calibração do \textit{NeuralFactors} — entre 0,35 e 0,42 para todos os quantis avaliados — são manifestamente inconsistentes com o comportamento esperado do modelo: um modelo bem calibrado deveria apresentar erros próximos de zero, o que indica que as probabilidades empíricas deveriam convergir para os níveis nominais dos quantis. Os valores observados sugerem falha sistemática no pipeline de dados, e não propriedade intrínseca do modelo. Uma discussão substantiva dos resultados será conduzida na versão final do trabalho, após 
+a correção da base de dados.}
 
 
 %#################################
@@ -145,18 +159,14 @@ sujeito a uma restrição sobre a norma $L_1$ dos pesos. Essa restrição contro
 
 Seguindo \textcite{gopal2024}, consideram-se quatro configurações: long-only com $L=\infty$, long-only com $L=1$, long-short com $L=\infty$ e long-short com $L=1$. Essa distinção permite avaliar o impacto da restrição de alavancagem e da possibilidade de posições vendidas sobre o desempenho da estratégia.
 
-Os resultados são apresentados na Tabela \ref{tab:sharpe}, que reporta o \textit{Sharpe ratio} obtido nos conjuntos de validação e teste para cada configuração. Observa-se que o desempenho do \textit{NeuralFactors} é consistente com os resultados obtidos nas métricas estatísticas anteriores, apresentando desempenho superior ou comparável aos modelos alternativos na maioria das configurações avaliadas.
+\input{figuras/table_backtest}
 
-\textbf{[Inserir aqui Tabela de Sharpe Ratios]}
-
-A Figura \ref{fig:cum_returns} ilustra a evolução dos retornos acumulados da estratégia long-only com $L=1$, comparada ao índice de referência. Para tornar as séries comparáveis em termos de risco, os retornos foram ajustados para igualar a volatilidade do benchmark.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.8\textwidth]{figuras/cumulative_returns.png}
-\caption{Retornos acumulados da estrategia.}
-\label{fig:strategy_returns}
-\end{figure}
-
-
-De maneira geral, observa-se que as configurações associadas aos menores valores de NLL$_{\text{joint}}$ tendem a apresentar melhor desempenho em termos de \textit{Sharpe ratio}, sugerindo que melhorias na modelagem probabilística da distribuição conjunta se traduzem em ganhos econômicos na alocação de risco. Esse resultado reforça a conexão entre qualidade estatística do modelo e sua aplicabilidade prática em estratégias de investimento.
+{\color{red}Os resultados apresentados na Tabela \ref{tab:sharpe} refletem o estado atual 
+da base de dados preliminar e não devem ser interpretados como indicativos 
+do desempenho real dos modelos. A volatilidade anualizada do 
+\textit{NeuralFactors} de 33,6\% — mais que o dobro da observada no PPCA — 
+é o indicador mais claro de que os retornos simulados pelo modelo estão sendo 
+contaminados por ruído proveniente do pipeline de dados, inflando artificialmente 
+o risco da carteira e comprimindo o Sharpe ratio para um valor próximo de zero. 
+Uma discussão substantiva dos resultados será conduzida na versão final do 
+trabalho, após a correção da base de dados.}
