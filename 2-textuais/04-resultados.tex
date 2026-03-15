@@ -1,0 +1,162 @@
+\chapter{Resultados}
+
+A avaliação empírica do modelo segue a mesma lógica adotada por \textcite{gopal2024}, examinando tanto a qualidade probabilística da distribuição estimada quanto sua utilidade econômica. Os resultados são apresentados separadamente para os conjuntos de validação e teste, permitindo avaliar estabilidade fora da amostra.
+
+%##################################
+
+\section{Negative Log-Likelihood}
+
+A principal métrica utilizada para avaliar o desempenho probabilístico do modelo é a \textit{negative log-likelihood} (NLL). Como o \textit{NeuralFactors} é formulado como um modelo generativo que aprende a distribuição condicional
+
+\[
+p(r_{t+1} \mid \mathcal{F}_t),
+\]
+
+a forma mais direta de avaliar sua qualidade consiste em verificar a probabilidade que ele atribui aos retornos efetivamente observados fora da amostra. Em outras palavras, o modelo é considerado superior quanto maior for a log-verossimilhança associada aos dados reais.
+
+Para cada período $t$, define-se a log-verossimilhança condicional como
+
+\[
+\log p(r_{t+1} \mid \mathcal{F}_t),
+\]
+
+onde a integral sobre os fatores latentes é aproximada por meio do limite CIWAE com múltiplas amostras, conforme descrito na seção de treinamento. A métrica reportada é a versão negativa dessa quantidade,
+
+\[
+\text{NLL}_t = - \log p(r_{t+1} \mid \mathcal{F}_t),
+\]
+
+de modo que valores menores indicam melhor ajuste probabilístico.
+
+Seguindo \textcite{gopal2024}, distinguem-se duas versões da métrica. A primeira é a NLL conjunta,
+
+\begin{equation}
+\text{NLL}_{\text{joint},t}
+=
+\frac{1}{N_t}
+\log p\big(\{r_{i,t+1}\}_{i=1}^{N_t} \mid \mathcal{F}_t\big),
+\end{equation}
+
+que corresponde à média da log-verossimilhança da distribuição condicional conjunta dos retornos no período $t$. Essa métrica avalia diretamente a capacidade do modelo de capturar a estrutura multivariada dos dados, incluindo correlações e dependências cruzadas entre ativos.
+
+A segunda é a NLL individual,
+
+\begin{equation}
+\text{NLL}_{\text{ind},t}
+=
+\sum_{i=1}^{N_t}
+\frac{1}{N_t}
+\log p(r_{i,t+1} \mid \mathcal{F}_t),
+\end{equation}
+
+que corresponde à média das log-verossimilhanças marginais por ativo. Enquanto a NLL$_{\text{joint}}$ examina a qualidade da modelagem conjunta, a NLL$_{\text{ind}}$ avalia o ajuste das distribuições univariadas.
+
+A distinção entre as duas métricas é relevante porque um modelo pode ajustar adequadamente as distribuições marginais e ainda assim falhar em capturar a estrutura de dependência entre ativos. A NLL conjunta é, portanto, a medida mais exigente e aquela que melhor reflete o desempenho do modelo como representação da distribuição multivariada completa.
+
+No artigo original, a NLL$_{\text{joint}}$ e a NLL$_{\text{ind}}$ são calculadas utilizando amostragem do posterior e do prior com diferentes números de simulações, assegurando aproximações precisas das integrais envolvidas. A mesma metodologia é adotada neste trabalho para garantir comparabilidade entre resultados.
+
+\textbf{[Inserir aqui Tabela correspondente aos valores de NLL para validação e teste.]}
+
+Os resultados permitem avaliar simultaneamente a qualidade estatística da distribuição aprendida e sua estabilidade fora da amostra. Valores consistentemente menores no conjunto de teste indicam que o modelo generaliza adequadamente e captura de forma robusta a estrutura probabilística dos retornos.
+
+%##################################
+
+\section{Previsão de Covariância}
+
+Uma das principais vantagens do \textit{NeuralFactors} é a possibilidade de obter a matriz de covariância prevista em forma fechada, decorrente da estrutura fatorial do modelo. A partir da especificação do \textit{Decoder}, a covariância condicional dos retornos pode ser escrita como
+
+\[
+\Sigma_{t+1}
+=
+\Sigma_x
++
+B_t \Sigma_z B_t^{\top},
+\]
+
+em que $\Sigma_x$ representa a matriz diagonal das variâncias idiossincráticas e $B_t \Sigma_z B_t^{\top}$ corresponde ao componente sistemático associado aos fatores latentes. Essa decomposição reproduz a estrutura clássica dos modelos fatoriais, na qual o risco total é a soma de um termo específico e de um termo comum de baixa dimensão.
+
+Para avaliar a qualidade da previsão de covariância, seguimos o procedimento adotado por \textcite{gopal2024}. Considera-se o subconjunto de ativos que permanecem continuamente na amostra ao longo do período analisado, garantindo comparabilidade entre datas. Utilizando as previsões de média e covariância, os retornos observados no período seguinte são transformados em retornos \textit{whitened},
+
+\[
+\tilde{r}_{t+1}
+=
+\Sigma_{t+1}^{-1/2}
+\left(
+r_{t+1} - \mathbb{E}[r_{t+1}]
+\right),
+\]
+
+de modo que, sob especificação correta, a matriz de covariância de $\tilde{r}_{t+1}$ deve aproximar uma matriz identidade.
+
+A qualidade da previsão é então medida por duas estatísticas. A primeira é o erro quadrático médio (MSE) entre a matriz de covariância estimada dos retornos \textit{whitened} e a identidade. A segunda é a estatística de Box’s M, que avalia formalmente a equivalência entre matrizes de covariância. Essas duas métricas capturam, respectivamente, a magnitude média do erro e a consistência estrutural da matriz prevista.
+
+Os resultados estão apresentados na Tabela \ref{tab:cov}. Observa-se que o \textit{NeuralFactors} apresenta valores inferiores tanto de MSE quanto da estatística de Box’s M em comparação com os modelos alternativos, indicando melhor ajuste da estrutura de dependência entre ativos, tanto no conjunto de validação quanto no de teste.
+
+\textbf{[Inserir aqui Tabela de previsão de covariância.]}
+
+A precisão da matriz de covariância é particularmente relevante porque ela constitui insumo direto para problemas de alocação ótima de portfólio. Como será discutido na subseção seguinte, melhorias estatísticas na modelagem da covariância tendem a se refletir em ganhos econômicos na otimização de risco.
+
+%##################################
+
+\section{Análise de Risco (VaR e Calibração)}
+
+Uma das principais vantagens de modelos generativos é a possibilidade de extrair medidas completas de risco a partir da distribuição estimada. Diferentemente de modelos que produzem apenas previsões pontuais, o \textit{NeuralFactors} permite calcular probabilidades associadas a eventos extremos, como perdas acima de determinado nível. Nesse contexto, avalia-se a qualidade da modelagem das caudas da distribuição por meio de análise de \textit{Value at Risk} (VaR).
+
+Para cada período $t$, simula-se um conjunto de retornos a partir da distribuição condicional estimada $p(r_{t+1} \mid \mathcal{F}_t)$. O VaR ao nível $\alpha$ corresponde ao quantil $\alpha$ dessa distribuição simulada. Sob especificação correta, a proporção de observações reais que excedem o VaR$_\alpha$ deve ser aproximadamente igual a $\alpha$.
+
+A qualidade dessa correspondência é medida por meio do erro de calibração, conforme proposto por \textcite{kuleshov2018}. Seja $F_t$ a função de distribuição acumulada prevista pelo modelo e $\hat{p}_\alpha$ a fração empírica de observações para as quais $F_t(r_{t+1}) < \alpha$. O erro de calibração é definido como
+
+\[
+\text{cal} = \sum_{\alpha}
+\left(
+\hat{p}_\alpha - \alpha
+\right)^2,
+\]
+
+onde a soma é realizada sobre um conjunto de quantis igualmente espaçados. Neste trabalho, utilizam-se 100 quantis, o que permite avaliar a aderência da distribuição estimada ao longo de toda a cauda.
+
+Reportam-se duas medidas de calibração. A primeira, denominada \textbf{Uni.}, corresponde ao erro médio por ativo, ponderado pelo número de observações disponíveis. A segunda, \textbf{Port.}, calcula o erro de calibração para um portfólio igualmente ponderado composto pelos ativos da amostra. Essa distinção permite avaliar separadamente a qualidade da modelagem univariada e o comportamento agregado da distribuição.
+
+Os resultados estão apresentados na Tabela \ref{tab:var}. Observa-se que, no conjunto de validação, o desempenho do modelo é competitivo, embora inferior a algumas especificações alternativas em determinados cenários. No conjunto de teste, entretanto, o \textit{NeuralFactors} apresenta melhora substancial na calibração univariada e desempenho comparável na calibração do portfólio.
+
+\textbf{[Inserir aqui Tabela de calibração do VaR]}
+
+Os resultados indicam que, embora o modelo capture adequadamente a estrutura de dependência e apresente desempenho superior na previsão de covariância, a modelagem das caudas ainda pode ser aprimorada. Essa evidência sugere que melhorias futuras podem estar associadas a especificações alternativas para a distribuição dos fatores ou para o componente idiossincrático.
+
+
+%#################################
+
+\section{Backtest e Otimização de Portfólio}
+
+A utilidade econômica da matriz de covariância estimada é avaliada por meio de estratégias de otimização de portfólio. Como a estrutura do modelo fornece previsões explícitas para a média e a covariância condicional dos retornos, torna-se natural utilizar essas estimativas como insumo para problemas clássicos de alocação de risco.
+
+Adota-se uma formulação de otimização média-variância, na qual os pesos $w$ são escolhidos para maximizar a utilidade quadrática esperada,
+
+\[
+\max_{w \in \mathbb{R}^N}
+\quad
+\mathbb{E}[r_{t+1}]^{\top} w
+-
+\frac{\lambda}{2}
+w^{\top} \Sigma_{t+1} w,
+\]
+
+sujeito a uma restrição sobre a norma $L_1$ dos pesos. Essa restrição controla o grau de alavancagem permitido na carteira e permite comparar diferentes regimes de investimento.
+
+Seguindo \textcite{gopal2024}, consideram-se quatro configurações: long-only com $L=\infty$, long-only com $L=1$, long-short com $L=\infty$ e long-short com $L=1$. Essa distinção permite avaliar o impacto da restrição de alavancagem e da possibilidade de posições vendidas sobre o desempenho da estratégia.
+
+Os resultados são apresentados na Tabela \ref{tab:sharpe}, que reporta o \textit{Sharpe ratio} obtido nos conjuntos de validação e teste para cada configuração. Observa-se que o desempenho do \textit{NeuralFactors} é consistente com os resultados obtidos nas métricas estatísticas anteriores, apresentando desempenho superior ou comparável aos modelos alternativos na maioria das configurações avaliadas.
+
+\textbf{[Inserir aqui Tabela de Sharpe Ratios]}
+
+A Figura \ref{fig:cum_returns} ilustra a evolução dos retornos acumulados da estratégia long-only com $L=1$, comparada ao índice de referência. Para tornar as séries comparáveis em termos de risco, os retornos foram ajustados para igualar a volatilidade do benchmark.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figuras/cumulative_returns.png}
+\caption{Retornos acumulados da estrategia.}
+\label{fig:strategy_returns}
+\end{figure}
+
+
+De maneira geral, observa-se que as configurações associadas aos menores valores de NLL$_{\text{joint}}$ tendem a apresentar melhor desempenho em termos de \textit{Sharpe ratio}, sugerindo que melhorias na modelagem probabilística da distribuição conjunta se traduzem em ganhos econômicos na alocação de risco. Esse resultado reforça a conexão entre qualidade estatística do modelo e sua aplicabilidade prática em estratégias de investimento.

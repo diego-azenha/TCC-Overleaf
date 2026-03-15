@@ -1,0 +1,369 @@
+\chapter{Metodologia}
+
+A transição da análise fatorial tradicional para uma estrutura orientada por dados exige a formalização explícita do problema estatístico subjacente. Se a teoria fatorial clássica parte da hipótese de que os retornos podem ser decompostos em componentes sistemáticos e idiossincráticos, a abordagem proposta por \textcite{gopal2024} reformula essa hipótese como um problema de modelagem probabilística. O objetivo deixa de ser apenas estimar exposições fatoriais por regressão e passa a ser o de aprender diretamente a distribuição condicional dos retornos futuros.
+
+\section{Formulação do Problema}
+
+O problema central consiste em modelar a distribuição conjunta dos retornos no período seguinte, condicionada ao conjunto de informações disponíveis no presente. Formalmente, deseja-se estimar
+
+\begin{equation}
+    p(r_{t+1} \mid \mathcal{F}_t),
+\end{equation}
+
+onde $r_{t+1} \in \mathbb{R}^{N_{t+1}}$ representa o vetor de retornos das $N_{t+1}$ ações existentes no período $t+1$, e $\mathcal{F}_t$ denota o conjunto de informações observáveis até o instante $t$. Esse conjunto inclui séries históricas de retornos, variáveis contábeis, indicadores macroeconômicos e demais características utilizadas como entradas do modelo.
+
+Diferentemente dos modelos multifatoriais tradicionais, nos quais os fatores são previamente definidos e tratados como variáveis observáveis, o \textit{NeuralFactors} assume que os fatores são variáveis latentes a serem inferidas. A estrutura preserva a intuição econômica da decomposição entre risco sistemático e risco idiossincrático, mas permite que os fatores emergem endogenamente da estrutura de dependência observada nos dados.
+
+O processo generativo assumido pelo modelo pode ser descrito em duas etapas. Primeiro, sorteia-se um vetor de fatores latentes para o período seguinte:
+
+\begin{equation}
+    z_{t+1} \sim t_{\nu_z}(\mu_z, \sigma_z),
+\end{equation}
+
+em que $z_{t+1} \in \mathbb{R}^{F}$ representa os fatores sistemáticos de mercado e $F$ denota o número de fatores. A escolha da distribuição Student-$t$ permite acomodar caudas mais pesadas, característica recorrente em retornos financeiros, além de fornecer maior robustez a observações extremas.
+
+Em seguida, condicionalmente aos fatores latentes, cada retorno individual é gerado segundo
+
+\begin{equation}
+    r_{i,t+1} \sim p(r_{i,t+1} \mid z_{t+1}, \mathcal{F}_t), 
+    \quad i = 1, \dots, N_{t+1}.
+\end{equation}
+
+A dependência entre ativos surge exclusivamente por meio do vetor comum $z_{t+1}$, preservando a lógica estrutural dos modelos fatoriais: dado o componente sistemático, os retornos tornam-se condicionalmente independentes.
+
+A verossimilhança condicional associada a esse processo pode ser escrita como
+
+\begin{equation}
+\log p(r_{t+1} \mid \mathcal{F}_t)
+=
+\log
+\int
+\left(
+\prod_{i=1}^{N_{t+1}}
+p(r_{i,t+1} \mid z_{t+1}, \mathcal{F}_t)
+\right)
+p(z_{t+1})
+\, dz_{t+1}.
+\end{equation}
+
+Essa expressão representa a probabilidade atribuída pelo modelo ao conjunto efetivamente observado de retornos no período $t+1$, integrando sobre todas as possíveis realizações dos fatores latentes. Em termos econômicos, trata-se da medida de quão plausível é o estado realizado do mercado à luz das informações históricas disponíveis.
+
+A dificuldade central reside no fato de que a integral acima não possui forma fechada, pois envolve a integração de uma função não linear em um espaço de dimensão $F$. A estimação direta por máxima verossimilhança torna-se, portanto, impraticável. A solução adotada consiste em recorrer à inferência variacional, permitindo aproximar essa quantidade por meio de uma função objetivo tratável, mantendo a coerência probabilística do modelo. A próxima seção detalha como essa estrutura é operacionalizada na arquitetura do \textit{NeuralFactors}.
+
+%###########################################################################
+
+\section{Estrutura do Modelo}
+
+A formulação probabilística apresentada estabelece o processo gerador dos retornos, mas ainda é necessário especificar como os parâmetros dessa distribuição são determinados a partir da informação observável. Em particular, se os fatores latentes representam o componente sistemático comum aos ativos, deve-se definir de que maneira cada empresa se conecta a esses fatores ao longo do tempo.
+
+No \textit{NeuralFactors}, essa conexão é construída por meio de uma arquitetura composta por três elementos principais: o \textit{Stock Embedder}, responsável por transformar a informação histórica em parâmetros específicos de cada ativo; o \textit{Decoder}, que combina esses parâmetros aos fatores latentes para gerar os retornos; e o \textit{Encoder}, que permite inferir os fatores a partir dos dados observados durante o treinamento. A seguir, detalha-se cada um desses componentes.
+
+\\
+
+\begin{figure}[h]
+\centering
+\input{figuras/architecture}
+\caption{Arquitetura do Modelo}
+\end{figure}
+
+\\
+
+%################################################
+
+\subsection{Stock Embedder}
+
+O \textit{Stock Embedder} constitui o primeiro estágio da arquitetura e desempenha papel central na dinâmica do modelo. Sua função é mapear o conjunto de informações disponíveis até o período $t$ em quatro parâmetros específicos para cada ativo: um intercepto idiossincrático $\alpha_{i,t}$, um vetor de exposições fatoriais $\beta_{i,t} \in \mathbb{R}^{F}$, um parâmetro de escala $\sigma_{i,t}$ e os graus de liberdade $\nu_{i,t}$ da distribuição condicional. Esses parâmetros determinam integralmente a distribuição de $r_{i,t+1}$ dado o vetor de fatores latentes.
+
+\\
+
+\begin{figure}[h]
+\centering
+\input{figuras/stock_embedder}
+\end{figure}
+
+\\
+
+Essa construção representa uma diferença fundamental em relação aos modelos fatoriais tradicionais. Em estruturas lineares clássicas, as exposições $\beta_i$ são estimadas por regressões com especificação fixa ou com variação temporal limitada. No presente modelo, ao contrário, tanto as exposições quanto o risco idiossincrático passam a ser funções explícitas do estado informacional corrente. A sensibilidade de uma empresa aos fatores sistemáticos torna-se, assim, dependente de suas características financeiras, de sua trajetória recente e das condições macroeconômicas vigentes.
+
+Para operacionalizar essa dependência temporal, o modelo utiliza como entrada uma janela móvel de $l$ períodos anteriores, composta pelos retornos históricos do ativo e por variáveis explicativas adicionais. Denotando por $X^{ts}_{i,t}$ o conjunto de variáveis temporais associadas ao ativo $i$ e por $X^{static}_{i}$ suas características estruturais, o modelo processa a sequência
+
+\[
+\{r_{i,t-l}, X^{ts}_{i,t-l}, \dots, r_{i,t}, X^{ts}_{i,t}\},
+\]
+
+com o objetivo de extrair uma representação sintética do histórico recente.
+
+Cada observação temporal é inicialmente projetada em um espaço latente por meio de uma transformação linear, produzindo uma representação intermediária $h_{1}$. A sequência dessas representações é então processada por um modelo sequencial — implementado por camadas do tipo \textit{Transformer} — que agrega a informação ao longo do tempo e produz um vetor resumido $h_{2,i,t}$. Esse vetor pode ser interpretado como um estado latente que sintetiza a trajetória recente do ativo.
+
+A representação temporal $h_{2,i,t}$ é concatenada às características estáticas $X^{static}_{i}$ e processada por uma rede totalmente conectada adicional, gerando um vetor final $h_{3,i,t}$. É a partir desse vetor que os parâmetros da distribuição condicional são obtidos:
+
+\begin{align}
+    \alpha_{i,t} &= w_\alpha^{\top} h_{3,i,t}, \\
+    \beta_{i,t} &= W_\beta h_{3,i,t}, \\
+    \sigma_{i,t} &= S(w_\sigma^{\top} h_{3,i,t}), \\
+    \nu_{i,t} &= S(w_\nu^{\top} h_{3,i,t}) + 4,
+\end{align}
+
+em que $S(\cdot)$ denota a função \textit{softplus}, utilizada para garantir positividade nos parâmetros de escala e graus de liberdade.
+
+Ao final desse estágio, cada ativo passa a possuir uma parametrização própria da distribuição de seu retorno futuro, condicionada à informação disponível em $t$. Esses parâmetros serão combinados aos fatores latentes no componente seguinte da arquitetura.
+
+%################################################################3
+
+\subsection{Decoder}
+
+O vetor de fatores latentes $z_{t+1}$ resume o estado sistemático do mercado no período seguinte, mas ainda é necessário especificar como esse estado se traduz em retornos individuais. Essa tradução é realizada pelo \textit{Decoder}, que impõe ao modelo uma estrutura fatorial linear, preservando a intuição econômica clássica ao mesmo tempo em que a insere em um arcabouço probabilístico completo.
+
+Para cada ativo $i$, o retorno no período $t+1$ é descrito como a soma de três componentes: um intercepto específico, uma combinação linear dos fatores latentes e um termo idiossincrático. Formalmente,
+
+\begin{equation}
+    r_{i,t+1}
+    =
+    \alpha_{i,t}
+    +
+    \beta_{i,t}^{\top} z_{t+1}
+    +
+    \varepsilon_{i,t+1},
+\end{equation}
+
+em que $\alpha_{i,t}$ representa o componente não explicado pelos fatores comuns, $\beta_{i,t} \in \mathbb{R}^{F}$ mede a exposição do ativo aos fatores sistemáticos e $\varepsilon_{i,t+1}$ captura a variação específica da empresa. Condicionalmente aos fatores, assume-se que esse termo segue uma distribuição Student-$t$ com escala $\sigma_{i,t}$ e graus de liberdade $\nu_{i,t}$, o que implica que
+
+\begin{equation}
+    p(r_{i,t+1} \mid z_{t+1}, \mathcal{F}_t)
+    =
+    t_{\nu_{i,t}}
+    \big(
+    \alpha_{i,t} + \beta_{i,t}^{\top} z_{t+1},
+    \sigma_{i,t}
+    \big).
+\end{equation}
+
+Essa especificação mantém a decomposição tradicional entre risco sistemático e risco idiossincrático. O termo $\beta_{i,t}^{\top} z_{t+1}$ sintetiza a parcela do retorno associada ao estado agregado do mercado, enquanto $\alpha_{i,t}$ e $\varepsilon_{i,t+1}$ representam características próprias do ativo. A diferença fundamental em relação aos modelos lineares convencionais reside no fato de que todos os parâmetros são funções explícitas da informação disponível até o período $t$, permitindo que tanto as exposições fatoriais quanto o risco específico variem ao longo do tempo.
+
+A escolha da distribuição Student-$t$ amplia a flexibilidade do modelo ao permitir caudas mais pesadas do que a hipótese normal usual, acomodando episódios de volatilidade elevada sem alterar a estrutura fatorial. Como consequência direta dessa construção, os retornos tornam-se independentes entre si quando condicionados ao vetor de fatores latentes. A correlação entre ativos emerge exclusivamente da componente sistemática comum, de modo que a matriz de covariância implícita pode ser decomposta na soma de um termo diagonal associado ao risco idiossincrático e de um termo de baixa dimensão determinado pelas exposições fatoriais e pela covariância dos fatores.
+
+%######################################################################
+
+\subsection{Encoder}
+
+A especificação do modelo define como os retornos são gerados a partir dos fatores latentes: sorteia-se um vetor $z_{t+1}$ e, condicionalmente a ele, produzem-se os retornos individuais. Durante o treinamento, entretanto, o problema é inverso. Observam-se os retornos e busca-se inferir quais valores dos fatores tornam esses dados mais prováveis. Essa inversão entre geração e inferência torna necessária a construção de uma distribuição posterior para os fatores latentes.
+
+Do ponto de vista formal, a estimação do modelo envolve a maximização da verossimilhança condicional
+
+\[
+p(r_{t+1} \mid \mathcal{F}_t)
+=
+\int
+p(r_{t+1} \mid z_{t+1}, \mathcal{F}_t)
+p(z_{t+1})
+\, dz_{t+1},
+\]
+
+expressão que requer integrar sobre todas as possíveis realizações de $z_{t+1}$. Sob a especificação adotada — prior Student-$t$ e distribuição condicional também Student-$t$ — essa integral não possui forma fechada, e a posterior exata $p(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)$ não pode ser obtida analiticamente. A ausência de conjugação entre as distribuições inviabiliza a derivação direta do posterior.
+
+Para contornar essa dificuldade, introduz-se uma distribuição aproximada $q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)$ que desempenha o papel de posterior variacional. Essa distribuição permitirá substituir a integral original por uma expressão tratável na função de perda. A escolha da forma funcional de $q(\cdot)$ constitui decisão metodológica central do modelo.
+
+Diferentemente de muitas arquiteturas de \textit{variational autoencoders}, o \textit{NeuralFactors} não parametriza o posterior aproximado por meio de uma rede neural independente. A própria estrutura linear imposta pelo \textit{Decoder} permite explorar uma aproximação analítica. Ao substituir as distribuições Student-$t$ por distribuições Normais por meio de \textit{moment matching}, obtém-se um sistema equivalente a um modelo linear Gaussiano condicional, recuperando propriedades de conjugação e permitindo derivar uma solução fechada para a distribuição dos fatores.
+
+Sob essa aproximação, a distribuição variacional assume forma Normal,
+
+\[
+q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)
+=
+\mathcal{N}
+\big(
+\mu_{z|B,r},
+\Sigma_{z|B}
+\big),
+\]
+
+em que a matriz de covariância posterior é dada por
+
+\[
+\Sigma_{z|B}
+=
+\left(
+\Sigma_z^{-1}
++
+B_t^{\top}
+\Sigma_x^{-1}
+B_t
+\right)^{-1},
+\]
+
+e a média condicional por
+
+\[
+\mu_{z|B,r}
+=
+\Sigma_{z|B}
+\left(
+\Sigma_z^{-1}\mu_z
++
+B_t^{\top}
+\Sigma_x^{-1}
+(r_{t+1} - \alpha_t)
+\right).
+\]
+
+Nessas expressões, $B_t$ representa a matriz de exposições fatoriais, $\Sigma_x$ é uma matriz diagonal cujos elementos correspondem às variâncias idiossincráticas $\sigma_{i,t}^2$ e $\Sigma_z$ denota a covariância prévia dos fatores. A estrutura resultante é análoga a uma regressão linear bayesiana ponderada, na qual $\Sigma_z^{-1}$ atua como regularização imposta pelo prior e $B_t^{\top}\Sigma_x^{-1}B_t$ incorpora a informação proveniente dos dados observados. O equilíbrio entre essas duas fontes de informação determina simultaneamente a média e a incerteza associadas aos fatores inferidos.
+
+O \textit{Encoder}, nesse contexto, não constitui um bloco neural adicional, mas a solução analítica do problema de inferência induzido pela estrutura do modelo. Sua função é fornecer uma aproximação consistente da posterior dos fatores, que será utilizada na definição da função de perda baseada em inferência variacional apresentada na seção seguinte.
+
+%################################################
+
+\section{Treinamento}
+
+Treinar o modelo consiste em ajustar os parâmetros das redes neurais e do prior dos fatores de modo a maximizar a probabilidade dos retornos observados nos dados históricos. Como o \textit{NeuralFactors} é um modelo generativo, seu objetivo não é apenas prever valores pontuais, mas aprender a distribuição condicional completa dos retornos futuros. Formalmente, deseja-se estimar os parâmetros que maximizam a log-verossimilhança média
+
+\[
+\sum_t \log p(r_{t+1} \mid \mathcal{F}_t),
+\]
+
+onde a soma percorre as observações da amostra.
+
+A dificuldade central decorre da presença dos fatores latentes. A probabilidade condicional dos retornos envolve a integração sobre o vetor $z_{t+1}$, o que impede a obtenção de uma expressão analítica direta para a log-verossimilhança. Assim, a maximização direta torna-se inviável, exigindo uma aproximação sistemática da integral.
+
+\subsection{Inferência Variacional e ELBO}
+
+Para tornar o problema tratável, introduz-se a distribuição variacional $q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)$ e utiliza-se a identidade
+
+\[
+\log p(r_{t+1} \mid \mathcal{F}_t)
+=
+\log
+\int
+q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)
+\frac{
+p(r_{t+1} \mid z_{t+1}, \mathcal{F}_t)
+p(z_{t+1})
+}{
+q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)
+}
+dz_{t+1}.
+\]
+
+Reescrevendo a integral como esperança sob $q(\cdot)$, obtém-se
+
+\[
+\log p(r_{t+1} \mid \mathcal{F}_t)
+=
+\log
+\mathbb{E}_{q}
+\left[
+\frac{
+p(r_{t+1} \mid z_{t+1}, \mathcal{F}_t)
+p(z_{t+1})
+}{
+q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)
+}
+\right].
+\]
+
+Aplicando a desigualdade de Jensen, obtém-se um limite inferior para a log-verossimilhança,
+
+\[
+\log p(r_{t+1} \mid \mathcal{F}_t)
+\ge
+\mathbb{E}_{q}
+\left[
+\log p(r_{t+1} \mid z_{t+1}, \mathcal{F}_t)
++
+\log p(z_{t+1})
+-
+\log q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)
+\right].
+\]
+
+Essa expressão define o \textit{Evidence Lower Bound} (ELBO). A maximização do ELBO fornece uma aproximação consistente para a maximização da log-verossimilhança, permitindo que os parâmetros do modelo sejam estimados por meio de métodos de otimização baseados em gradiente.
+
+\subsection{Importance Weighted Autoencoder (IWAE)}
+
+Embora o ELBO permita estimar os parâmetros do modelo de forma consistente, ele constitui apenas um limite inferior para a log-verossimilhança. Em modelos latentes de alta dimensão, esse limite pode ser relativamente frouxo, especialmente quando a distribuição variacional $q(\cdot)$ difere significativamente da posterior verdadeira. Para reduzir essa discrepância, \textcite{burda2016} propõem o \textit{Importance Weighted Autoencoder} (IWAE), que fornece uma aproximação mais apertada para a log-verossimilhança.
+
+A ideia central do IWAE consiste em substituir a única amostra da distribuição variacional por múltiplas amostras independentes. Seja $\{z^{(1)}, \dots, z^{(K)}\}$ um conjunto de realizações extraídas de $q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)$. A esperança presente na formulação do ELBO pode então ser aproximada por uma média amostral ponderada,
+
+\[
+\frac{1}{K}
+\sum_{k=1}^{K}
+\frac{
+p(r_{t+1} \mid z^{(k)}, \mathcal{F}_t)
+p(z^{(k)})
+}{
+q(z^{(k)} \mid r_{t+1}, \mathcal{F}_t)
+}.
+\]
+
+Inserindo essa aproximação na expressão da log-verossimilhança, obtém-se o seguinte limite inferior:
+
+\[
+\log p(r_{t+1} \mid \mathcal{F}_t)
+\ge
+\mathbb{E}
+\left[
+\log
+\left(
+\frac{1}{K}
+\sum_{k=1}^{K}
+\frac{
+p(r_{t+1} \mid z^{(k)}, \mathcal{F}_t)
+p(z^{(k)})
+}{
+q(z^{(k)} \mid r_{t+1}, \mathcal{F}_t)
+}
+\right)
+\right].
+\]
+
+Esse limite corresponde ao IWAE bound. À medida que $K$ aumenta, a aproximação converge para a log-verossimilhança verdadeira, tornando o limite inferior progressivamente mais apertado. Em termos práticos, a utilização de múltiplas amostras melhora a qualidade da estimativa e reduz o viés introduzido pela aproximação variacional.
+
+No contexto do \textit{NeuralFactors}, essa estratégia é particularmente relevante, pois a distribuição dos fatores latentes desempenha papel central na determinação da estrutura de dependência entre os ativos. O uso de múltiplas amostras durante o treinamento contribui para uma representação mais fiel da incerteza associada aos fatores e, consequentemente, para uma estimação mais precisa da distribuição conjunta dos retornos.
+
+\subsection{Conditional IWAE (CIWAE)}
+
+A formulação apresentada até aqui foi descrita em termos gerais para modelos latentes. No caso do \textit{NeuralFactors}, contudo, a distribuição de interesse é explicitamente condicional à informação disponível até o período $t$. O objetivo do treinamento não é estimar $p(r)$, mas sim a distribuição condicional
+
+\[
+p(r_{t+1} \mid \mathcal{F}_t).
+\]
+
+Essa distinção implica que tanto o prior dos fatores quanto a distribuição variacional são condicionais ao conjunto informacional $\mathcal{F}_t$. A extensão natural do IWAE para esse contexto é o \textit{Conditional Importance Weighted Autoencoder} (CIWAE), no qual a função objetivo passa a ser escrita como
+
+\[
+\log p(r_{t+1} \mid \mathcal{F}_t)
+\ge
+\mathbb{E}
+\left[
+\log
+\left(
+\frac{1}{K}
+\sum_{k=1}^{K}
+\frac{
+p(r_{t+1} \mid z^{(k)}, \mathcal{F}_t)
+p(z^{(k)} \mid \mathcal{F}_t)
+}{
+q(z^{(k)} \mid r_{t+1}, \mathcal{F}_t)
+}
+\right)
+\right].
+\]
+
+A diferença em relação ao IWAE padrão reside no condicionamento explícito em $\mathcal{F}_t$, que incorpora as informações históricas no prior dos fatores e na distribuição variacional. Essa formulação mantém a coerência com o processo generativo descrito anteriormente e garante que a estimação respeite a natureza condicional do problema.
+
+No treinamento, amostras $z^{(k)}$ são extraídas da distribuição variacional e utilizadas para aproximar a esperança presente na expressão acima. A maximização desse limite inferior fornece estimativas consistentes para os parâmetros das redes neurais e do prior dos fatores, permitindo que o modelo aprenda simultaneamente a estrutura das exposições e a dinâmica da distribuição conjunta dos retornos.
+
+%##################
+
+\subsection{Configuração e Hiperparâmetros}
+
+O treinamento do modelo foi realizado por meio de otimização estocástica baseada em gradiente, utilizando o limite inferior definido pelo CIWAE como função objetivo. Em cada iteração, para uma data $t$, consideram-se todos os ativos disponíveis naquele dia como uma única observação conjunta, preservando a natureza multivariada da distribuição estimada. Essa escolha é consistente com a estrutura do modelo, no qual a dependência entre ativos é mediada pelos fatores latentes.
+
+O número de amostras utilizadas no cálculo do limite IWAE foi fixado em $K=20$, conforme recomendado em \textcite{gopal2024}. Valores maiores de $K$ produzem aproximações mais apertadas da log-verossimilhança, mas aumentam o custo computacional de forma aproximadamente linear. O valor adotado representa um compromisso entre precisão da estimativa e viabilidade computacional.
+
+A otimização foi conduzida com o algoritmo Adam, com taxa de aprendizado de $10^{-4}$ e regularização $L_2$ (weight decay) de $10^{-6}$. Todas as camadas ocultas do modelo utilizam dimensão 256, com taxa de \textit{dropout} de 0,25, em linha com a especificação original. O modelo foi treinado por 200.000 iterações, com cálculo da perda de validação a cada 1.000 passos, sendo selecionado o conjunto de parâmetros associado ao menor valor da função objetivo no conjunto de validação.
+
+Para aumentar a estabilidade da convergência, foi utilizada média exponencial dos parâmetros (\textit{Polyak averaging}) a partir da metade do processo de treinamento. Esse procedimento reduz a variância das estimativas e melhora o desempenho fora da amostra, particularmente em modelos de alta dimensionalidade.
+
+Todos os experimentos foram implementados em \textit{PyTorch}, utilizando \textit{PyTorch Lightning} para organização do treinamento, gerenciamento de dispositivos e controle de experimentos. A combinação dessas escolhas assegura reprodutibilidade e alinhamento com a metodologia descrita no artigo original.
+
+%########################################################

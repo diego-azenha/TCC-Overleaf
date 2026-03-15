@@ -1,0 +1,55 @@
+\begin{tikzpicture}[
+node distance=3.2cm,
+block/.style={
+    rectangle,
+    rounded corners,
+    draw,
+    thick,
+    minimum width=4cm,
+    minimum height=1.6cm,
+    align=center,
+    font=\small
+},
+embed/.style={block, fill=blue!15},
+encoder/.style={block, fill=orange!20},
+decoder/.style={block, fill=green!20},
+arrow/.style={->, thick}
+]
+
+% Nodes
+\node[embed] (embed) {
+\textbf{Stock Embedder}\\[4pt]
+Neural Network\\[4pt]
+$\alpha_{i,t},\,\beta_{i,t},\,\sigma_{i,t},\,\nu_{i,t}$
+};
+
+\node[encoder, below=2.8cm of embed] (encoder) {
+\textbf{Encoder}\\[4pt]
+$z_{t+1} \sim \mathcal{N}(\mu_{z|B,t},\,\Sigma_{z|B,t})$
+};
+
+\node[decoder, right=5.4cm of embed] (decoder) {
+\textbf{Decoder}\\[4pt]
+$r_{i,t+1} \sim t_{\nu_{i,t}}\!\left(
+\alpha_{i,t}+\beta_{i,t}^{\top}z_{t+1},\,
+\sigma_{i,t}
+\right)$
+};
+
+% Arrows
+\draw[arrow] 
+(embed) -- 
+node[left, align=center] {\footnotesize $\alpha_{i,t},\,\beta_{i,t},\,\sigma_{i,t}$}
+(encoder);
+
+\draw[arrow] 
+(embed) -- 
+node[above] {\footnotesize $\alpha_{i,t},\,\beta_{i,t},\,\sigma_{i,t},\,\nu_{i,t}$}
+(decoder);
+
+\draw[arrow] 
+(encoder) -- 
+node[below] {\footnotesize $z_{t+1}$}
+(decoder);
+
+\end{tikzpicture}
