@@ -1,6 +1,47 @@
 \chapter{Resultados}
 
-A avaliação empírica do modelo segue a mesma lógica adotada por \textcite{gopal2024}, examinando tanto a qualidade probabilística da distribuição estimada quanto sua utilidade econômica. Os resultados são apresentados separadamente para os conjuntos de validação e teste, permitindo avaliar estabilidade fora da amostra.
+Avaliar um modelo generativo exige uma abordagem distinta da utilizada 
+em modelos preditivos convencionais. Um modelo de regressão pode ser 
+julgado pelo erro de previsão pontual — a distância entre o valor 
+previsto e o observado. Um modelo que aprende uma distribuição de 
+probabilidade completa precisa ser avaliado em múltiplas dimensões 
+simultaneamente, pois uma distribuição pode estar corretamente 
+especificada em média e ainda assim falhar nas correlações entre ativos, 
+nas caudas ou na calibração de eventos extremos. Nenhuma métrica isolada 
+captura todas essas propriedades, o que justifica a estrutura de 
+avaliação adotada neste capítulo.
+
+A avaliação é organizada em torno de quatro dimensões complementares, 
+seguindo a estrutura proposta por \textcite{gopal2024}. A 
+\textit{negative log-likelihood} mede o ajuste agregado da distribuição 
+conjunta estimada aos retornos observados — quanto maior a probabilidade 
+atribuída pelo modelo aos dados reais, melhor o ajuste global. A 
+previsão de covariância examina uma propriedade distinta e não 
+necessariamente capturada pela NLL: a precisão da estrutura de 
+dependência entre ativos, que o modelo fatorial produz diretamente em 
+forma fechada a partir das exposições e da covariância dos fatores 
+latentes. A calibração do \textit{Value at Risk} testa o comportamento 
+das caudas da distribuição estimada, verificando se as probabilidades 
+de perdas extremas atribuídas pelo modelo correspondem às frequências 
+empiricamente observadas — propriedade que modelos financeiros 
+frequentemente violam mesmo quando apresentam bom ajuste global. Por 
+fim, o backtest de portfólio traduz o desempenho estatístico em valor 
+econômico, avaliando se as melhorias na modelagem da distribuição se 
+refletem em ganhos concretos na alocação de risco.
+
+Em cada dimensão, o \textit{NeuralFactors} é comparado ao PPCA — o 
+modelo fatorial probabilístico canônico sob hipóteses Gaussianas, 
+introduzido na revisão da literatura. O PPCA serve como linha de base 
+por ser o caso mais parcimonioso e bem estabelecido da família de 
+modelos fatoriais probabilísticos com posterior analítico: suas 
+hipóteses Gaussianas garantem tratabilidade matemática, mas limitam a 
+capacidade de capturar caudas pesadas e dependências dinâmicas. Qualquer 
+ganho do \textit{NeuralFactors} sobre esse benchmark é evidência de que 
+a complexidade adicional — exposições fatoriais dinâmicas, distribuições 
+Student-$t$ e inferência variacional — produz valor mensurável nas 
+dimensões avaliadas. Os resultados são apresentados separadamente para 
+os conjuntos de validação e teste, permitindo avaliar a estabilidade do 
+desempenho fora da amostra.
 
 %##################################
 
@@ -105,8 +146,6 @@ favorável ao \textit{NeuralFactors} — com MSE médio de 0,000003 contra
 dois modelos impede qualquer comparação direta nesta versão. Uma discussão 
 substantiva dos resultados será conduzida na versão final do trabalho, após 
 a correção da base de dados.}
-
-A precisão da matriz de covariância é particularmente relevante porque ela constitui insumo direto para problemas de alocação ótima de portfólio. Como será discutido na subseção seguinte, melhorias estatísticas na modelagem da covariância tendem a se refletir em ganhos econômicos na otimização de risco.
 
 %##################################
 
