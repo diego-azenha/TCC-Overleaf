@@ -140,30 +140,64 @@ em que $\alpha_{i,t}$ representa o componente não explicado pelos fatores comun
 
 Essa especificação mantém a decomposição tradicional entre risco sistemático e risco idiossincrático. O termo $\beta_{i,t}^{\top} z_{t+1}$ sintetiza a parcela do retorno associada ao estado agregado do mercado, enquanto $\alpha_{i,t}$ e $\varepsilon_{i,t+1}$ representam características próprias do ativo. A diferença fundamental em relação aos modelos lineares convencionais reside no fato de que todos os parâmetros são funções explícitas da informação disponível até o período $t$, permitindo que tanto as exposições fatoriais quanto o risco específico variem ao longo do tempo.
 
-A escolha da distribuição Student-$t$ amplia a flexibilidade do modelo ao permitir caudas mais pesadas do que a hipótese normal usual, acomodando episódios de volatilidade elevada sem alterar a estrutura fatorial. Como consequência direta dessa construção, os retornos tornam-se independentes entre si quando condicionados ao vetor de fatores latentes. A correlação entre ativos emerge exclusivamente da componente sistemática comum, de modo que a matriz de covariância implícita pode ser decomposta na soma de um termo diagonal associado ao risco idiossincrático e de um termo de baixa dimensão determinado pelas exposições fatoriais e pela covariância dos fatores.
+A escolha da distribuição Student-$t$ amplia a flexibilidade do modelo ao permitir caudas mais pesadas do que a hipótese normal usual, acomodando episódios de volatilidade elevada sem alterar a estrutura fatorial. Como consequência direta dessa construção, os retornos tornam-se independentes entre si quando condicionados ao vetor de fatores latentes: toda a correlação entre ativos emerge exclusivamente da componente sistemática comum $\beta_{i,t}^{\top} z_{t+1}$, e não de qualquer dependência direta entre os termos idiossincráticos. Isso significa que a matriz de covariância condicional dos retornos pode ser obtida em forma fechada a partir dos próprios parâmetros do modelo. Denotando por $B_t$ a matriz cujas linhas são os vetores $\beta_{i,t}$ e por $\Sigma_x$ a matriz diagonal com entradas $\sigma_{i,t}^2$, essa decomposição assume a forma
+
+\begin{equation}
+    \Sigma_{t+1} = \Sigma_x + B_t \Sigma_z B_t^{\top},
+    \label{eq:cov_decomp}
+\end{equation}
+
+em que o primeiro termo captura o risco idiossincrático de cada ativo e o segundo concentra toda a dependência cruzada em um componente de baixa dimensão determinado pelos fatores. Essa expressão é a contraparte probabilística da decomposição clássica dos modelos fatoriais e constituirá a base direta para o cálculo das matrizes de covariância utilizadas na avaliação do modelo e na otimização de portfólios.
 
 %######################################################################
 
 \subsection{Encoder}
 
-A especificação do modelo define como os retornos são gerados a partir dos fatores latentes: sorteia-se um vetor $z_{t+1}$ e, condicionalmente a ele, produzem-se os retornos individuais. Durante o treinamento, entretanto, o problema é inverso. Observam-se os retornos e busca-se inferir quais valores dos fatores tornam esses dados mais prováveis. Essa inversão entre geração e inferência torna necessária a construção de uma distribuição posterior para os fatores latentes.
+Ao contrário do que o nome pode sugerir, o \textit{Encoder} no \textit{NeuralFactors} não
+constitui um bloco neural adicional: é a solução analítica de um problema de inferência
+bayesiana induzido pela própria estrutura do modelo. Para compreender como essa solução
+é derivada, é necessário partir do problema inverso ao processo generativo.
 
-Do ponto de vista formal, a estimação do modelo envolve a maximização da verossimilhança condicional
+A especificação do modelo define como os retornos são gerados a partir dos fatores
+latentes: sorteia-se um vetor $z_{t+1}$ e, condicionalmente a ele, produzem-se os
+retornos individuais. Durante o treinamento, entretanto, o problema é inverso.
+Observam-se os retornos e busca-se inferir quais valores dos fatores tornam esses dados
+mais prováveis. Essa inversão entre geração e inferência torna necessária a construção
+de uma distribuição posterior para os fatores latentes.
+
+Do ponto de vista formal, a estimação do modelo envolve a maximização da verossimilhança
+condicional
 
 \[
 p(r_{t+1} \mid \mathcal{F}_t)
 =
 \int
 p(r_{t+1} \mid z_{t+1}, \mathcal{F}_t)
-p(z_{t+1})
+\, p(z_{t+1})
 \, dz_{t+1},
 \]
 
-expressão que requer integrar sobre todas as possíveis realizações de $z_{t+1}$. Sob a especificação adotada — prior Student-$t$ e distribuição condicional também Student-$t$ — essa integral não possui forma fechada, e a posterior exata $p(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)$ não pode ser obtida analiticamente. A ausência de conjugação entre as distribuições inviabiliza a derivação direta do posterior.
+expressão que requer integrar sobre todas as possíveis realizações de $z_{t+1}$. Sob a
+especificação adotada — prior Student-$t$ e distribuição condicional também Student-$t$
+— essa integral não possui forma fechada, e o posterior exato
+$p(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)$ não pode ser obtido analiticamente. A ausência
+de conjugação entre as distribuições inviabiliza a derivação direta do posterior. Para contornar essa dificuldade, introduz-se uma distribuição aproximada
+$q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)$ que desempenha o papel de posterior
+variacional. A escolha da forma funcional de $q(\cdot)$ constitui a decisão
+metodológica central do componente de inferência.
 
-Para contornar essa dificuldade, introduz-se uma distribuição aproximada $q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)$ que desempenha o papel de posterior variacional. Essa distribuição permitirá substituir a integral original por uma expressão tratável na função de perda. A escolha da forma funcional de $q(\cdot)$ constitui decisão metodológica central do modelo.
-
-Diferentemente de muitas arquiteturas de \textit{variational autoencoders}, o \textit{NeuralFactors} não parametriza o posterior aproximado por meio de uma rede neural independente. A própria estrutura linear imposta pelo \textit{Decoder} permite explorar uma aproximação analítica. Ao substituir as distribuições Student-$t$ por distribuições Normais por meio de \textit{moment matching}, obtém-se um sistema equivalente a um modelo linear Gaussiano condicional, recuperando propriedades de conjugação e permitindo derivar uma solução fechada para a distribuição dos fatores.
+Diferentemente de muitas arquiteturas de \textit{variational autoencoders}, o
+\textit{NeuralFactors} não parametriza esse posterior por meio de uma rede neural
+independente. A própria estrutura linear imposta pelo \textit{Decoder} permite explorar
+uma aproximação analítica. O ponto de partida é substituir as distribuições Student-$t$
+— tanto do prior quanto do decoder — por distribuições Normais equivalentes via
+\textit{moment matching}: para cada Student-$t$ com média $\mu$, escala $\sigma$ e
+$\nu$ graus de liberdade, a Gaussiana correspondente é
+$\mathcal{N}\!\left(\mu,\, \frac{\nu}{\nu - 2}\,\sigma^2\right)$, que preserva os dois
+primeiros momentos da distribuição original. Com essa substituição, o sistema passa a
+ter prior Gaussiano e verossimilhança Gaussiana, configurando um modelo linear Gaussiano
+condicional para o qual vale a conjugação Normal-Normal: o posterior resultante é também
+Gaussiano e admite forma fechada.
 
 Sob essa aproximação, a distribuição variacional assume forma Normal,
 
@@ -171,13 +205,13 @@ Sob essa aproximação, a distribuição variacional assume forma Normal,
 q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)
 =
 \mathcal{N}
-\big(
-\mu_{z|B,r},
+\!\big(
+\mu_{z|B,r},\,
 \Sigma_{z|B}
 \big),
 \]
 
-em que a matriz de covariância posterior é dada por
+em que a covariância posterior é dada por
 
 \[
 \Sigma_{z|B}
@@ -206,9 +240,30 @@ B_t^{\top}
 \right).
 \]
 
-Nessas expressões, $B_t$ representa a matriz de exposições fatoriais, $\Sigma_x$ é uma matriz diagonal cujos elementos correspondem às variâncias idiossincráticas $\sigma_{i,t}^2$ e $\Sigma_z$ denota a covariância prévia dos fatores. A estrutura resultante é análoga a uma regressão linear bayesiana ponderada, na qual $\Sigma_z^{-1}$ atua como regularização imposta pelo prior e $B_t^{\top}\Sigma_x^{-1}B_t$ incorpora a informação proveniente dos dados observados. O equilíbrio entre essas duas fontes de informação determina simultaneamente a média e a incerteza associadas aos fatores inferidos.
+A estrutura dessas expressões tem interpretação direta em termos bayesianos. A
+covariância $\Sigma_{z|B}$ é determinada pela soma de duas matrizes de precisão:
+$\Sigma_z^{-1}$, que representa a informação trazida pelo prior, e
+$B_t^{\top}\Sigma_x^{-1}B_t$, que representa a informação trazida pelos dados
+observados — ponderada pela precisão idiossincrática de cada ativo e projetada no
+espaço dos fatores via $B_t$. A média $\mu_{z|B,r}$ é então o ponto que equilibra
+essas duas fontes de informação: quando o prior é forte relativamente aos dados, os
+fatores inferidos são puxados em direção a $\mu_z$; quando os dados são informativos,
+dominam. O termo $(r_{t+1} - \alpha_t)$ remove o componente idiossincrático dos
+retornos antes dessa ponderação, isolando a parcela do sinal atribuível aos fatores
+sistemáticos. A estrutura resultante é formalmente análoga a uma regressão linear
+bayesiana ponderada.
 
-O \textit{Encoder}, nesse contexto, não constitui um bloco neural adicional, mas a solução analítica do problema de inferência induzido pela estrutura do modelo. Sua função é fornecer uma aproximação consistente da posterior dos fatores, que será utilizada na definição da função de perda baseada em inferência variacional apresentada na seção seguinte.
+Por fim, cabe precisar o papel do condicionamento em $\mathcal{F}_t$ na distribuição
+prior. Na formulação do CIWAE, a função objetivo escreve $p(z^{(k)} \mid \mathcal{F}_t)$,
+sugerindo que o prior dos fatores varia com a informação disponível. Na prática, os
+parâmetros do prior — $\mu_z$, $\Sigma_z$ e $\nu_z$ — são tratados como parâmetros
+globais aprendidos durante o treinamento, fixos ao longo do tempo. O condicionamento em
+$\mathcal{F}_t$ é, portanto, uma notação de consistência com o processo generativo
+condicional, e não indica variação temporal do prior em si. Toda a dinâmica temporal do
+modelo é capturada pelo \textit{Stock Embedder}, que produz exposições $\beta_{i,t}$ e
+parâmetros idiossincráticos $\sigma_{i,t}$ e $\nu_{i,t}$ específicos para cada período.
+O prior fixo atua como regularização global, evitando que os fatores latentes divirjam
+arbitrariamente durante o treinamento.
 
 %################################################
 

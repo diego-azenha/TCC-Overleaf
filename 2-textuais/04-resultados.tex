@@ -31,7 +31,11 @@ refletem em ganhos concretos na alocação de risco.
 
 Em cada dimensão, o \textit{NeuralFactors} é comparado ao PPCA — o 
 modelo fatorial probabilístico canônico sob hipóteses Gaussianas, 
-introduzido na revisão da literatura. O PPCA serve como linha de base 
+introduzido na revisão da literatura. Para fins de comparação, o PPCA 
+é estimado por máxima verossimilhança sobre uma janela móvel de retornos 
+históricos, produzindo uma matriz de covariância da forma 
+$\Sigma = \Sigma_x + BB^{\top}$ com cargas e variâncias idiossincráticas 
+fixas ao longo do período de previsão. O PPCA serve como linha de base 
 por ser o caso mais parcimonioso e bem estabelecido da família de 
 modelos fatoriais probabilísticos com posterior analítico: suas 
 hipóteses Gaussianas garantem tratabilidade matemática, mas limitam a 
