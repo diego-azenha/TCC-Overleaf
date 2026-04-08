@@ -17,10 +17,14 @@ Diferentemente dos modelos multifatoriais tradicionais, nos quais os fatores sã
 O processo generativo assumido pelo modelo pode ser descrito em duas etapas. Primeiro, sorteia-se um vetor de fatores latentes para o período seguinte:
 
 \begin{equation}
-    z_{t+1} \sim t_{\nu_z}(\mu_z, \sigma_z),
+    z_{t+1} \sim t_{\nu_z}(\mu_z, \Sigma_z),
 \end{equation}
 
-em que $z_{t+1} \in \mathbb{R}^{F}$ representa os fatores sistemáticos de mercado e $F$ denota o número de fatores. A escolha da distribuição Student-$t$ permite acomodar caudas mais pesadas, característica recorrente em retornos financeiros, além de fornecer maior robustez a observações extremas.
+em que $z_{t+1} \in \mathbb{R}^{F}$ representa os fatores sistemáticos de mercado,
+$F$ denota o número de fatores e $\Sigma_z \in \mathbb{R}^{F \times F}$ é a matriz
+de covariância do prior. A escolha da distribuição Student-$t$ permite acomodar
+caudas mais pesadas, característica recorrente em retornos financeiros, além de
+fornecer maior robustez a observações extremas.
 
 Em seguida, condicionalmente aos fatores latentes, cada retorno individual é gerado segundo
 
@@ -104,7 +108,10 @@ A representação temporal $h_{2,i,t}$ é concatenada às características está
     \nu_{i,t} &= S(w_\nu^{\top} h_{3,i,t}) + 4,
 \end{align}
 
-em que $S(\cdot)$ denota a função \textit{softplus}, utilizada para garantir positividade nos parâmetros de escala e graus de liberdade.
+em que $S(\cdot)$ denota a função \textit{softplus}, utilizada para garantir
+positividade nos parâmetros de escala e graus de liberdade. O deslocamento de
+4 unidades em $\nu_{i,t}$ assegura graus de liberdade superiores a 4, condição
+necessária para que a distribuição Student-$t$ possua curtose finita.
 
 Ao final desse estágio, cada ativo passa a possuir uma parametrização própria da distribuição de seu retorno futuro, condicionada à informação disponível em $t$. Esses parâmetros serão combinados aos fatores latentes no componente seguinte da arquitetura.
 
@@ -248,10 +255,10 @@ observados — ponderada pela precisão idiossincrática de cada ativo e projeta
 espaço dos fatores via $B_t$. A média $\mu_{z|B,r}$ é então o ponto que equilibra
 essas duas fontes de informação: quando o prior é forte relativamente aos dados, os
 fatores inferidos são puxados em direção a $\mu_z$; quando os dados são informativos,
-dominam. O termo $(r_{t+1} - \alpha_t)$ remove o componente idiossincrático dos
-retornos antes dessa ponderação, isolando a parcela do sinal atribuível aos fatores
-sistemáticos. A estrutura resultante é formalmente análoga a uma regressão linear
-bayesiana ponderada.
+dominam. O termo $(r_{t+1} - \alpha_t)$ — em que $\alpha_t$ denota o vetor cujas entradas
+são os interceptos individuais $\alpha_{i,t}$ — remove o componente idiossincrático
+dos retornos antes dessa ponderação, isolando a parcela do sinal atribuível aos
+fatores sistemáticos.
 
 Por fim, cabe precisar o papel do condicionamento em $\mathcal{F}_t$ na distribuição
 prior. Na formulação do CIWAE, a função objetivo escreve $p(z^{(k)} \mid \mathcal{F}_t)$,

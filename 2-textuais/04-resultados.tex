@@ -76,10 +76,11 @@ de modo que valores menores indicam melhor ajuste probabilístico.
 Seguindo \textcite{gopal2024}, distinguem-se duas versões da métrica. A primeira é a NLL conjunta,
 
 \begin{equation}
-\text{NLL}_{\text{joint},t}
+\text{NLL}_{\text{ind},t}
 =
+-\sum_{i=1}^{N_t}
 \frac{1}{N_t}
-\log p\big(\{r_{i,t+1}\}_{i=1}^{N_t} \mid \mathcal{F}_t\big),
+\log p(r_{i,t+1} \mid \mathcal{F}_t),
 \end{equation}
 
 que corresponde à média da log-verossimilhança da distribuição condicional conjunta dos retornos no período $t$. Essa métrica avalia diretamente a capacidade do modelo de capturar a estrutura multivariada dos dados, incluindo correlações e dependências cruzadas entre ativos.
@@ -193,10 +194,10 @@ Adota-se uma formulação de otimização média-variância, na qual os pesos $w
 \mathbb{E}[r_{t+1}]^{\top} w
 -
 \frac{\lambda}{2}
-w^{\top} \Sigma_{t+1} w,
+w^{\top} \Sigma_{t+1} w
+\quad
+\text{s.a.} \quad \|w\|_1 \leq L,
 \]
-
-sujeito a uma restrição sobre a norma $L_1$ dos pesos. Essa restrição controla o grau de alavancagem permitido na carteira e permite comparar diferentes regimes de investimento.
 
 Seguindo \textcite{gopal2024}, consideram-se quatro configurações: long-only com $L=\infty$, long-only com $L=1$, long-short com $L=\infty$ e long-short com $L=1$. Essa distinção permite avaliar o impacto da restrição de alavancagem e da possibilidade de posições vendidas sobre o desempenho da estratégia.
 
