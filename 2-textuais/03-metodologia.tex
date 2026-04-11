@@ -430,102 +430,129 @@ Todos os experimentos foram implementados em \textit{PyTorch}, utilizando \texti
 
 %########################################################
 
-%################################################
-
 \section{Dados}
-
-{\color{red}
-\textbf{Nota Metodológica — Versão Preliminar.}
-Os dados e procedimentos de tratamento descritos nesta seção correspondem a uma versão preliminar da implementação, desenvolvida com o objetivo de viabilizar a construção e os testes iniciais da arquitetura do modelo. Algumas limitações conhecidas — detalhadas ao longo da seção — serão endereçadas na versão final do trabalho, incluindo o tratamento adequado da entrada e saída de ativos da amostra, a revisão dos procedimentos de preenchimento de dados ausentes e a revisão da composição histórica do universo de ativos.
-}
 
 \subsection{Universo de Ativos}
 
-O universo de ativos utilizado é composto pelas ações que integravam o índice IBrX-100 no início do período amostral. O IBrX-100 é um índice de retorno total calculado pela B3 que reúne as cem ações de maior liquidez e capitalização do mercado acionário brasileiro, ponderadas pelo valor de mercado do \textit{free float}. A escolha desse índice como universo base reflete o objetivo de concentrar a análise em ativos com liquidez suficiente para viabilizar estratégias de alocação de portfólio, além de garantir disponibilidade razoável de dados históricos e de variáveis fundamentalistas ao longo do período considerado.
-
-A composição utilizada corresponde ao conjunto de ativos presentes no índice no início da amostra, mantido fixo ao longo de todo o período de análise. Essa decisão introduz uma limitação metodológica relevante: ao ignorar as mudanças históricas na composição do índice, a amostra fica sujeita a \textit{survivorship bias}, uma vez que tendem a ser incluídas apenas empresas que sobreviveram e mantiveram liquidez suficiente ao longo do tempo. Modelos treinados sobre essa amostra podem, em consequência, superestimar o desempenho em condições reais de mercado, nas quais o investidor não teria acesso a essa informação prospectiva. A correção desse viés, mediante a reconstrução da composição histórica do índice, constitui um dos aprimoramentos previstos para a versão final do trabalho.
-
-A dinâmica de entrada e saída de ativos ao longo do tempo não é tratada explicitamente nesta versão. O modelo admite nativamente um número variável de ativos por período — $N_t$ pode diferir entre datas — o que é compatível com a realidade de um índice cuja composição se altera. A implementação adequada desse mecanismo, com critérios explícitos de inclusão e exclusão baseados em composição histórica, está prevista como etapa de refinamento.
-
-O mercado acionário brasileiro apresenta características que o distinguem do 
-mercado norte-americano analisado por \textcite{gopal2024} e que tornam a 
-replicação analiticamente relevante. O universo de ativos líquidos é 
-significativamente menor, com elevada concentração setorial em commodities, 
-energia e setor financeiro, o que implica estruturas de correlação entre ativos 
-potencialmente distintas das observadas em mercados mais diversificados. Os 
-retornos brasileiros são historicamente sensíveis a choques macroeconômicos 
-externos — variações no câmbio, nos preços de commodities e no apetite global 
-por risco — e a ciclos políticos e fiscais domésticos, fatores que introduzem 
-regimes de volatilidade mais pronunciados do que os típicos em mercados 
-desenvolvidos. Essas características colocam exigências específicas sobre a 
-capacidade do modelo de capturar dependências dinâmicas e caudas pesadas, 
-propriedades para as quais o \textit{NeuralFactors} foi explicitamente 
-projetado. A replicação é, nesse sentido, um teste de portabilidade do modelo 
-a um ambiente econômico distinto, com implicações para sua aplicabilidade em 
-outros mercados emergentes.
+Os dados foram obtidos de duas fontes: a plataforma Economatica, que
+forneceu séries históricas de preços e variáveis fundamentalistas das
+empresas listadas na B3, e o terminal Bloomberg, do qual foram extraídas
+séries de índices de mercado domésticos e internacionais. O universo de
+ativos é definido pelo conjunto de ações com preço de fechamento ajustado
+disponível na Economatica ao longo do período amostral, totalizando 956
+tickers únicos. Em cada data de negociação $t$, um ativo é considerado
+válido se possui janela de \textit{lookback} de pelo menos $L = 256$ dias
+úteis completa e retorno-alvo disponível para o período seguinte. O número
+de ativos válidos por data varia tipicamente entre 200 e 400, dos quais
+841 tickers possuem cobertura no período de treinamento.
 
 \subsection{Período e Divisão da Amostra}
 
-Os dados cobrem o período de janeiro de 2005 a dezembro de 2025, totalizando aproximadamente vinte anos de observações diárias. Essa extensão temporal permite que o modelo seja exposto a diferentes regimes de mercado, incluindo episódios de estresse como a crise financeira global de 2008, o ciclo de deterioração macroeconômica brasileira de 2014 a 2016, e o choque de volatilidade associado à pandemia de 2020.
-
-A amostra foi dividida em três subperíodos, sem sobreposição entre conjuntos:
-
-\begin{itemize}
-    \item \textbf{Treinamento:} janeiro de 2005 a dezembro de 2018
-    \item \textbf{Validação:} janeiro de 2019 a dezembro de 2022
-    \item \textbf{Teste:} janeiro de 2023 a dezembro de 2025
-\end{itemize}
-
-O conjunto de treinamento compreende aproximadamente 70\% da amostra e é utilizado exclusivamente para a estimação dos parâmetros do modelo. O conjunto de validação serve para o monitoramento da função de perda fora da amostra durante o treinamento e para a seleção do modelo com melhor generalização, conforme descrito na seção de hiperparâmetros. O conjunto de teste, mantido inteiramente fora do processo de estimação, é reservado para a avaliação final do desempenho.
-
-Para os conjuntos de validação e teste, os dados de variáveis explicativas dos períodos anteriores são concatenados ao início de cada subperíodo, de modo a possibilitar a construção das janelas de \textit{lookback} sem que os retornos-alvo desses períodos contaminem o treinamento. Essa precaução assegura que não haja vazamento de informação (\textit{data leakage}) entre os conjuntos.
+Os dados cobrem o período de janeiro de 2005 a março de 2026. A amostra
+foi dividida em três subperíodos sem sobreposição: treinamento, de janeiro
+de 2005 a dezembro de 2018; validação, de janeiro de 2019 a dezembro de
+2022; e teste, de janeiro de 2023 a março de 2026. As estatísticas de
+normalização são calculadas exclusivamente sobre o conjunto de treinamento
+e aplicadas sem modificação aos demais conjuntos, de modo a evitar
+vazamento de informação prospectiva. O conjunto de validação é utilizado
+para monitoramento da função de perda fora da amostra e seleção do modelo
+durante o treinamento; o conjunto de teste é reservado inteiramente para
+a avaliação final. Embora a primeira observação disponível seja janeiro
+de 2005, a primeira data de treinamento efetiva é aproximadamente janeiro
+de 2006, pois o modelo requer uma janela de \textit{lookback} de 256 dias
+úteis anteriores à data de previsão.
 
 \subsection{Variáveis e Pré-processamento}
 
-As variáveis utilizadas como entrada do modelo foram organizadas em três categorias: características diárias específicas de cada ativo, características trimestrais específicas de cada ativo, e indicadores macroeconômicos e de mercado de frequência diária. A Tabela \ref{tab:features} apresenta o conjunto completo de variáveis, com suas respectivas categorias e frequências.
+As variáveis de entrada são organizadas em características temporais,
+que variam por ativo e por data, e características estáticas, invariantes
+no tempo. As características temporais compõem o tensor
+$S \in \mathbb{R}^{N_t \times L \times d_{ts}}$, com $d_{ts} = 41$. Em
+cada período $u$ da janela de \textit{lookback}, o vetor de entrada de
+cada ativo é formado pela concatenação do log-retorno diário, de onze
+variáveis fundamentalistas específicas da empresa e de log-retornos de
+29 índices de mercado extraídos do Bloomberg. A Tabela \ref{tab:features}
+apresenta o conjunto completo de variáveis.
 
 \begin{table}[H]
 \centering
-\caption{Variáveis utilizadas como entrada do modelo}
+\caption{Variáveis de entrada do modelo}
 \label{tab:features}
-\begin{tabular}{llc}
-\hline
-\textbf{Variável} & \textbf{Categoria} & \textbf{Frequência} \\
-\hline
-Preço de fechamento ajustado   & Ativo — mercado      & Diária     \\
-Volume negociado               & Ativo — mercado      & Diária     \\
-Índice P/L (\textit{LTM})      & Ativo — valuation    & Diária     \\
-Índice P/VPA                   & Ativo — valuation    & Diária     \\
-\textit{Free cash flow yield}  & Ativo — valuation    & Diária     \\
-Ações em circulação            & Ativo — estrutural   & Diária     \\
-\hline
-\textit{Cash ratio}            & Ativo — contábil     & Trimestral \\
-Retorno sobre ativos (ROA)     & Ativo — contábil     & Trimestral \\
-Dívida total / Ativos totais   & Ativo — contábil     & Trimestral \\
-\hline
-VIX                            & Macro — volatilidade & Diária     \\
-MXEF                           & Macro — global       & Diária     \\
-BCOMTR                         & Macro — commodities  & Diária     \\
-IFIX                           & Macro — doméstico    & Diária     \\
-\textit{High yield spreads}    & Macro — crédito      & Diária     \\
-Índice de crédito doméstico (IDEBB3) & Macro — crédito & Diária    \\
-\hline
+
+\begin{tabular}{ll}
+\multicolumn{2}{c}{\textit{Fundamentalistas}} \\
+\cmidrule(lr){1-2}
+\textit{Valuation / Mercado} & \textit{Rentabilidade / Caixa} \\
+\midrule
+P/VPA        & ROA (TTM)          \\
+EV/EBITDA    & ROE (TTM)          \\
+P/L          & Margem Bruta (TTM) \\
+Volume       & Dív. Bruta / Ativo \\
+             & Dív. Líq. / PL     \\
+             & FCF / Dívida       \\
+             & FCF Yield          \\
+\bottomrule
 \end{tabular}
+
+\vspace{0.5em}
+
+\begin{tabular}{llll}
+\multicolumn{4}{c}{\textit{Índices Bloomberg}} \\
+\cmidrule(lr){1-4}
+\textit{Brasil / Macro} & \textit{Renda Fixa} &
+\textit{Commodities} & \textit{Internacional} \\
+\midrule
+VIX        & BZRFIMAB & BCOMAGTR & MXEF  \\
+MOVE       & BZRFIMA  & BCOMGCTR & MXCN  \\
+CDS Brasil & SPUHYBDT & BCOMINTR & MXJP  \\
+DI Over    &          & BCOMNGTR & MXGB  \\
+BRL/USD    &          & BCOMSITR & MXCA  \\
+MXBRSC     &          & BCOMCOT  & MXEU  \\
+MXBRLC     &          &          & MXPCJ \\
+MXBR000V   &          &          & MXUS  \\
+IDIV       &          &          & MXLA  \\
+MLCXBV     &          &          &       \\
+MU702608   &          &          &       \\
+\bottomrule
+\end{tabular}
+
+\caption*{\footnotesize \textbf{Nota:} Variáveis fundamentalistas de frequência
+trimestral são propagadas para a grade diária por \textit{forward fill}. Todas
+as séries de índices entram como log-retornos diários. A classificação setorial
+($d_{static} = 11$) é codificada separadamente como vetor \textit{one-hot}.}
 \caption*{Fonte: Elaboração própria.}
 \end{table}
 
-A variável de câmbio (BRL/USD) foi inicialmente incluída na base de dados, mas removida em etapa posterior de pré-processamento em razão de cobertura insuficiente ao longo do período amostral, com proporção elevada de valores ausentes que inviabilizava seu uso.
+Os 29 índices Bloomberg cobrem cinco categorias: risco e sentimento global
+(VIX, MOVE, CDS Brasil 5 anos), variáveis macroeconômicas domésticas
+(taxa DI \textit{over} e câmbio BRL/USD), renda variável brasileira por
+estilo e segmento de capitalização (MSCI Brasil Small Cap, Large Cap,
+Value, IDIV, MLCXBV e MU702608), renda fixa doméstica e internacional
+(IMA-B, IMA-B 5+ e SPUHYBDT) e commodities e índices de ações
+internacionais por região (MXEF, MXCN, MXJP, MXGB, MXCA, MXEU, MXPCJ,
+MXUS, MXLA). Todas essas séries entram no modelo como log-retornos
+diários, de modo que o vetor de entrada captura variações contemporâneas
+das condições de mercado sem incorporar tendências de nível de longo prazo.
 
-As variáveis diárias foram obtidas em formato bruto e submetidas ao seguinte procedimento de tratamento: identificação e remoção de datas sem negociação (fins de semana e feriados); interpolação linear para preenchimento de lacunas internas nas séries de cada ativo; e preenchimento retroativo (\textit{backward fill}) para valores ausentes nas bordas das séries. As variáveis trimestrais foram tratadas com preenchimento progressivo (\textit{forward fill}), de modo a propagar o último valor trimestral conhecido para os dias subsequentes até a divulgação do trimestre seguinte, seguido de preenchimento retroativo para eventuais valores ausentes no início das séries.
+As variáveis fundamentalistas de frequência trimestral são propagadas
+para a grade diária por \textit{forward fill}, de modo que cada data
+recebe o último valor reportado até aquele momento. O \textit{backward
+fill} é deliberadamente omitido para evitar a incorporação de informações
+ainda não disponíveis ao investidor. Os indicadores FCF/Dívida e FCF
+Yield apresentam cobertura de aproximadamente 67\% e 70\% das observações
+potenciais após o preenchimento, respectivamente, em função da
+disponibilidade irregular de dados de fluxo de caixa na Economatica.
+Valores ausentes remanescentes são substituídos por zero, valor
+equivalente à média na escala normalizada após a padronização.
 
-Os retornos foram calculados como log-retornos diários,
-
-\begin{equation}
-    r_{i,t} = \ln\left(\frac{P_{i,t}}{P_{i,t-1}}\right),
-\end{equation}
-
-onde $P_{i,t}$ denota o preço de fechamento ajustado do ativo $i$ no período $t$. Valores infinitos resultantes de preços nulos ou negativos foram tratados como ausentes. Os retornos foram normalizados pela desvio padrão calculado exclusivamente sobre o período de treinamento, evitando vazamento de informação para os demais conjuntos.
-
-Todas as variáveis explicativas foram normalizadas individualmente pelo método \textit{min-max}, com escalonamento para o intervalo $[0, 1]$ calculado por ativo e por variável sobre a série completa. Embora essa normalização seja uma prática padrão em modelos de aprendizado profundo — facilitando a convergência do otimizador e evitando dominância de variáveis com escalas distintas — o uso de toda a série para o cálculo dos parâmetros de escalonamento introduz, em princípio, uma forma leve de vazamento prospectivo. O tratamento adequado dessa etapa, restringindo o cômputo dos parâmetros de normalização ao período de treinamento, está previsto como refinamento para a versão final.
-
-Durante a construção dos tensores de entrada, cada ativo é representado por uma janela de \textit{lookback} de 256 dias úteis anteriores à data de previsão. Ativos com histórico inferior a esse comprimento mínimo, ou com retorno ausente na data-alvo, são excluídos da observação correspondente por meio de uma máscara binária, sem impacto sobre os demais ativos do mesmo período.
+As características estáticas correspondem à classificação setorial de
+cada empresa, codificada como vetor \textit{one-hot} com base no setor
+econômico de nível 1, análogo ao nível 1 da classificação GICS. Essa
+representação resulta em $X^{static}_i \in \mathbb{R}^{11}$, invariante
+no tempo para cada ativo. Os retornos diários são normalizados pela
+divisão pelo desvio padrão calculado sobre o período de treinamento, sem
+subtração da média, em linha com a especificação de \textcite{gopal2024},
+na qual o intercepto $\alpha_{i,t}$ aprendido pelo \textit{Stock Embedder}
+captura o retorno esperado de cada ativo. As variáveis fundamentalistas
+e os retornos de índices são normalizados por z-score global, com média
+e desvio padrão calculados sobre o período de treinamento.
