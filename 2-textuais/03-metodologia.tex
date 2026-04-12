@@ -1,277 +1,138 @@
 \chapter{Metodologia}
 
-A transição da análise fatorial tradicional para uma estrutura orientada por dados exige a formalização explícita do problema estatístico subjacente. Se a teoria fatorial clássica parte da hipótese de que os retornos podem ser decompostos em componentes sistemáticos e idiossincráticos, a abordagem proposta por \textcite{gopal2024} reformula essa hipótese como um problema de modelagem probabilística. O objetivo deixa de ser apenas estimar exposições fatoriais por regressão e passa a ser o de aprender diretamente a distribuição condicional dos retornos futuros.
-
 \section{Formulação do Problema}
 
-O problema central consiste em modelar a distribuição conjunta dos retornos no período seguinte, condicionada ao conjunto de informações disponíveis no presente. Formalmente, deseja-se estimar
+O objetivo do modelo é aprender a distribuição conjunta dos retornos no período seguinte, condicionada ao conjunto de informações disponíveis no presente:
 
 \begin{equation}
     p(r_{t+1} \mid \mathcal{F}_t),
 \end{equation}
 
-onde $r_{t+1} \in \mathbb{R}^{N_{t+1}}$ representa o vetor de retornos das $N_{t+1}$ ações existentes no período $t+1$, e $\mathcal{F}_t$ denota o conjunto de informações observáveis até o instante $t$. Esse conjunto inclui séries históricas de retornos, variáveis contábeis, indicadores macroeconômicos e demais características utilizadas como entradas do modelo.
+onde $r_{t+1} \in \mathbb{R}^{N_{t+1}}$ representa o vetor de retornos das $N_{t+1}$ ações existentes no período $t+1$, e $\mathcal{F}_t$ denota o conjunto de informações observáveis até o instante $t$ --- séries históricas de retornos, variáveis contábeis, indicadores macroeconômicos e demais características utilizadas como entradas do modelo.
 
-Diferentemente dos modelos multifatoriais tradicionais, nos quais os fatores são previamente definidos e tratados como variáveis observáveis, o \textit{NeuralFactors} assume que os fatores são variáveis latentes a serem inferidas. A estrutura preserva a intuição econômica da decomposição entre risco sistemático e risco idiossincrático, mas permite que os fatores emergem endogenamente da estrutura de dependência observada nos dados.
-
-O processo generativo assumido pelo modelo pode ser descrito em duas etapas. Primeiro, sorteia-se um vetor de fatores latentes para o período seguinte:
+O processo generativo assumido pelo modelo descreve como os retornos seriam produzidos se fosse possível observar os fatores latentes. Primeiro, sorteia-se um vetor de fatores para o período seguinte:
 
 \begin{equation}
     z_{t+1} \sim t_{\nu_z}(\mu_z, \Sigma_z),
 \end{equation}
 
-em que $z_{t+1} \in \mathbb{R}^{F}$ representa os fatores sistemáticos de mercado,
-$F$ denota o número de fatores e $\Sigma_z \in \mathbb{R}^{F \times F}$ é a matriz
-de covariância do prior. A escolha da distribuição Student-$t$ permite acomodar
-caudas mais pesadas, característica recorrente em retornos financeiros, além de
-fornecer maior robustez a observações extremas.
-
-Em seguida, condicionalmente aos fatores latentes, cada retorno individual é gerado segundo
+em que $z_{t+1} \in \mathbb{R}^{F}$ representa os fatores sistemáticos de mercado, $F$ denota o número de fatores e $\Sigma_z \in \mathbb{R}^{F \times F}$ é a matriz de covariância do \textit{prior}. A escolha da distribuição Student-$t$ permite acomodar caudas mais pesadas do que a hipótese Gaussiana, característica recorrente em retornos financeiros. Em seguida, condicionalmente aos fatores latentes, cada retorno individual é gerado segundo
 
 \begin{equation}
-    r_{i,t+1} \sim p(r_{i,t+1} \mid z_{t+1}, \mathcal{F}_t), 
-    \quad i = 1, \dots, N_{t+1}.
+    r_{i,t+1} \sim p(r_{i,t+1} \mid z_{t+1}, \mathcal{F}_t), \quad i = 1, \dots, N_{t+1}.
 \end{equation}
 
-A dependência entre ativos surge exclusivamente por meio do vetor comum $z_{t+1}$, preservando a lógica estrutural dos modelos fatoriais: dado o componente sistemático, os retornos tornam-se condicionalmente independentes.
+A dependência entre ativos surge exclusivamente por meio do vetor comum $z_{t+1}$: dado o componente sistemático, os retornos tornam-se condicionalmente independentes. As próximas seções detalham como o modelo especifica essa distribuição condicional --- como a informação observável $\mathcal{F}_t$ é transformada em parâmetros que descrevem a distribuição de cada retorno, e como os fatores latentes $z_{t+1}$ são tratados durante o treinamento e a inferência.
 
-A verossimilhança condicional associada a esse processo pode ser escrita como
-
-\begin{equation}
-\log p(r_{t+1} \mid \mathcal{F}_t)
-=
-\log
-\int
-\left(
-\prod_{i=1}^{N_{t+1}}
-p(r_{i,t+1} \mid z_{t+1}, \mathcal{F}_t)
-\right)
-p(z_{t+1})
-\, dz_{t+1}.
-\end{equation}
-
-Essa expressão representa a probabilidade atribuída pelo modelo ao conjunto efetivamente observado de retornos no período $t+1$, integrando sobre todas as possíveis realizações dos fatores latentes. Em termos econômicos, trata-se da medida de quão plausível é o estado realizado do mercado à luz das informações históricas disponíveis.
-
-A dificuldade central reside no fato de que a integral acima não possui forma fechada, pois envolve a integração de uma função não linear em um espaço de dimensão $F$. A estimação direta por máxima verossimilhança torna-se, portanto, impraticável. A solução adotada consiste em recorrer à inferência variacional, permitindo aproximar essa quantidade por meio de uma função objetivo tratável, mantendo a coerência probabilística do modelo. A próxima seção detalha como essa estrutura é operacionalizada na arquitetura do \textit{NeuralFactors}.
-
-%###########################################################################
 
 \section{Estrutura do Modelo}
 
-A formulação probabilística apresentada estabelece o processo gerador dos retornos, mas ainda é necessário especificar como os parâmetros dessa distribuição são determinados a partir da informação observável. Em particular, se os fatores latentes representam o componente sistemático comum aos ativos, deve-se definir de que maneira cada empresa se conecta a esses fatores ao longo do tempo.
+A arquitetura do \textit{NeuralFactors} é composta por três componentes. O \textit{Stock Embedder} é uma rede neural que recebe as características históricas de cada ativo e produz os parâmetros que definem sua distribuição condicional de retorno. O \textit{Decoder} combina esses parâmetros com os fatores latentes para especificar a distribuição de cada retorno, impondo uma estrutura fatorial linear. O \textit{Encoder} resolve o problema inverso: dado que os retornos foram observados, infere quais fatores latentes provavelmente os geraram; ele é utilizado apenas durante o treinamento, pois na inferência os fatores são amostrados diretamente do \textit{prior}.
 
-No \textit{NeuralFactors}, essa conexão é construída por meio de uma arquitetura composta por três elementos principais: o \textit{Stock Embedder}, responsável por transformar a informação histórica em parâmetros específicos de cada ativo; o \textit{Decoder}, que combina esses parâmetros aos fatores latentes para gerar os retornos; e o \textit{Encoder}, que permite inferir os fatores a partir dos dados observados durante o treinamento. A seguir, detalha-se cada um desses componentes.
-
-\\
+Em cada data $t$, o \textit{Stock Embedder} processa as \textit{features} de todos os ativos válidos e produz quatro parâmetros por ativo: $\alpha_{i,t}$, $\beta_{i,t}$, $\sigma_{i,t}$ e $\nu_{i,t}$. Esses parâmetros alimentam simultaneamente o \textit{Decoder} e o \textit{Encoder}. No treinamento, o \textit{Encoder} utiliza os retornos observados $r_{t+1}$ junto com $\alpha$, $\beta$ e $\sigma$ para inferir a distribuição posterior dos fatores $q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)$. Amostras dessa distribuição são então passadas ao \textit{Decoder}, que avalia a verossimilhança de cada amostra dado os retornos observados. Na inferência, amostras de $z_{t+1}$ são extraídas diretamente do \textit{prior} $p(z_{t+1})$, e o \textit{Decoder} as converte em previsões de retorno.
 
 \begin{figure}[h]
 \centering
 \input{figuras/architecture}
-\caption{Arquitetura do Modelo}
+\caption{Arquitetura do modelo \textit{NeuralFactors}. O \textit{Stock Embedder} produz os parâmetros $\alpha_{i,t}$, $\beta_{i,t}$, $\sigma_{i,t}$ e $\nu_{i,t}$ a partir da informação disponível até o período $t$. O \textit{Encoder} infere a distribuição posterior dos fatores latentes $z_{t+1}$ durante o treinamento. O \textit{Decoder} avalia a verossimilhança dos retornos condicionalmente às amostras dos fatores.}
 \end{figure}
 
-\\
-
-%################################################
 
 \subsection{Stock Embedder}
 
-O \textit{Stock Embedder} constitui o primeiro estágio da arquitetura e desempenha papel central na dinâmica do modelo. Sua função é mapear o conjunto de informações disponíveis até o período $t$ em quatro parâmetros específicos para cada ativo: um intercepto idiossincrático $\alpha_{i,t}$, um vetor de exposições fatoriais $\beta_{i,t} \in \mathbb{R}^{F}$, um parâmetro de escala $\sigma_{i,t}$ e os graus de liberdade $\nu_{i,t}$ da distribuição condicional. Esses parâmetros determinam integralmente a distribuição de $r_{i,t+1}$ dado o vetor de fatores latentes.
-
-\\
+O \textit{Stock Embedder} transforma o conjunto de informações disponíveis até o período $t$ em quatro parâmetros específicos para cada ativo $i$: um intercepto idiossincrático $\alpha_{i,t}$, que captura o retorno esperado do ativo independentemente dos fatores comuns; um vetor de exposições fatoriais $\beta_{i,t} \in \mathbb{R}^{F}$, que determina a sensibilidade do ativo a cada um dos $F$ fatores latentes; um parâmetro de escala $\sigma_{i,t}$, que mede a dispersão do retorno em torno de sua média condicional; e os graus de liberdade $\nu_{i,t}$ da distribuição Student-$t$, que controlam o peso das caudas. Esses quatro parâmetros determinam integralmente a distribuição de $r_{i,t+1}$ dado o vetor de fatores latentes $z_{t+1}$. O \textit{Stock Embedder} é a mesma rede neural aplicada a cada ativo individualmente --- os pesos são compartilhados entre todas as ações, e a diferenciação entre elas provém exclusivamente das \textit{features} de entrada.
 
 \begin{figure}[h]
 \centering
 \input{figuras/stock_embedder}
+\caption{Representação visual do \textit{Stock Embedder}. A sequência temporal de \textit{features} é processada por uma projeção linear, um \textit{Transformer Encoder} e um MLP que incorpora as características estáticas, culminando nas quatro cabeças de saída.}
 \end{figure}
 
-\\
+O modelo recebe dois tipos de informação para cada ativo. O primeiro é uma janela móvel de $L$ períodos anteriores de características temporais, denotada por $\{r_{i,t-L}, X^{ts}_{i,t-L}, \dots, r_{i,t}, X^{ts}_{i,t}\}$. Cada elemento dessa sequência é um vetor de dimensão $d_{ts}$ que concatena o retorno diário do ativo com suas variáveis fundamentalistas e os retornos dos índices de mercado observados naquela data, formando um tensor $S_{i} \in \mathbb{R}^{L \times d_{ts}}$. O segundo tipo são as características estáticas $X^{static}_{i} \in \mathbb{R}^{d_{static}}$, invariantes no tempo --- na presente implementação, a classificação setorial da empresa codificada como vetor \textit{one-hot}.
 
-Essa construção representa uma diferença fundamental em relação aos modelos fatoriais tradicionais. Em estruturas lineares clássicas, as exposições $\beta_i$ são estimadas por regressões com especificação fixa ou com variação temporal limitada. No presente modelo, ao contrário, tanto as exposições quanto o risco idiossincrático passam a ser funções explícitas do estado informacional corrente. A sensibilidade de uma empresa aos fatores sistemáticos torna-se, assim, dependente de suas características financeiras, de sua trajetória recente e das condições macroeconômicas vigentes.
+O processamento desses dados segue uma sequência de transformações. Em cada posição da janela de \textit{lookback}, o vetor de \textit{features} de dimensão $d_{ts}$ é projetado em um espaço de dimensão $h$ por meio de uma transformação linear. Como o vetor de entrada combina variáveis de naturezas distintas (retornos, múltiplos contábeis, índices de mercado), essa projeção as mapeia para uma representação de dimensionalidade uniforme, compatível com o processamento sequencial subsequente. A sequência projetada, agora um tensor $M \in \mathbb{R}^{L \times h}$, é então processada por um \textit{Transformer Encoder} de duas camadas, cujo mecanismo de atenção permite que cada posição temporal interaja com todas as demais, capturando dependências de longo prazo dentro da janela de \textit{lookback}. Do tensor de saída do \textit{Transformer}, extrai-se o último estado temporal $h_{2,i,t} \in \mathbb{R}^{h}$, que sintetiza a trajetória recente do ativo em um único vetor.
 
-Para operacionalizar essa dependência temporal, o modelo utiliza como entrada uma janela móvel de $l$ períodos anteriores, composta pelos retornos históricos do ativo e por variáveis explicativas adicionais. Denotando por $X^{ts}_{i,t}$ o conjunto de variáveis temporais associadas ao ativo $i$ e por $X^{static}_{i}$ suas características estruturais, o modelo processa a sequência
+Essa representação temporal é então concatenada com o vetor de características estáticas $X^{static}_i$, incorporando ao perfil do ativo informações estruturais como o setor de atuação. O vetor resultante, de dimensão $h + d_{static}$, é processado por uma rede totalmente conectada (\textit{multi-layer perceptron}) de duas camadas com funções de ativação não lineares e \textit{dropout}, produzindo a representação final $h_{3,i,t} \in \mathbb{R}^{h}$. Enquanto o \textit{Transformer} captura dependências ao longo do tempo, o MLP captura interações entre os diferentes tipos de \textit{features} --- como a trajetória de retornos recente e o setor de atuação do ativo interagem para determinar as exposições fatoriais.
 
-\[
-\{r_{i,t-l}, X^{ts}_{i,t-l}, \dots, r_{i,t}, X^{ts}_{i,t}\},
-\]
-
-com o objetivo de extrair uma representação sintética do histórico recente.
-
-Cada observação temporal é inicialmente projetada em um espaço latente por meio de uma transformação linear, produzindo uma representação intermediária $h_{1}$. A sequência dessas representações é então processada por um modelo sequencial — implementado por camadas do tipo \textit{Transformer} — que agrega a informação ao longo do tempo e produz um vetor resumido $h_{2,i,t}$. Esse vetor pode ser interpretado como um estado latente que sintetiza a trajetória recente do ativo.
-
-A representação temporal $h_{2,i,t}$ é concatenada às características estáticas $X^{static}_{i}$ e processada por uma rede totalmente conectada adicional, gerando um vetor final $h_{3,i,t}$. É a partir desse vetor que os parâmetros da distribuição condicional são obtidos:
+A partir de $h_{3,i,t}$, quatro transformações lineares independentes produzem os parâmetros da distribuição condicional:
 
 \begin{align}
     \alpha_{i,t} &= w_\alpha^{\top} h_{3,i,t}, \\
-    \beta_{i,t} &= W_\beta h_{3,i,t}, \\
+    \beta_{i,t}  &= W_\beta h_{3,i,t}, \\
     \sigma_{i,t} &= S(w_\sigma^{\top} h_{3,i,t}), \\
-    \nu_{i,t} &= S(w_\nu^{\top} h_{3,i,t}) + 4,
+    \nu_{i,t}    &= S(w_\nu^{\top} h_{3,i,t}) + 4,
 \end{align}
 
-em que $S(\cdot)$ denota a função \textit{softplus}, utilizada para garantir
-positividade nos parâmetros de escala e graus de liberdade. O deslocamento de
-4 unidades em $\nu_{i,t}$ assegura graus de liberdade superiores a 4, condição
-necessária para que a distribuição Student-$t$ possua curtose finita.
+em que $S(\cdot)$ denota a função \textit{softplus} ($S(x) = \log(1 + e^x)$), utilizada para garantir positividade nos parâmetros de escala e graus de liberdade. O deslocamento de 4 unidades em $\nu_{i,t}$ assegura graus de liberdade superiores a 4, condição necessária para que a distribuição Student-$t$ possua curtose finita --- ou seja, para que o quarto momento exista e as caudas não sejam tão pesadas a ponto de tornar indefinida a variabilidade da variância. As dimensões dos parâmetros refletem seus papéis no modelo: $\alpha_{i,t}$ é um escalar que representa o retorno médio idiossincrático do ativo; $\beta_{i,t}$ tem dimensão $F$ porque cada entrada mede a sensibilidade do ativo a um dos $F$ fatores latentes; $\sigma_{i,t}$ e $\nu_{i,t}$ são escalares que parametrizam a distribuição do ruído idiossincrático.
 
-Ao final desse estágio, cada ativo passa a possuir uma parametrização própria da distribuição de seu retorno futuro, condicionada à informação disponível em $t$. Esses parâmetros serão combinados aos fatores latentes no componente seguinte da arquitetura.
-
-%################################################################3
 
 \subsection{Decoder}
 
-O vetor de fatores latentes $z_{t+1}$ resume o estado sistemático do mercado no período seguinte, mas ainda é necessário especificar como esse estado se traduz em retornos individuais. Essa tradução é realizada pelo \textit{Decoder}, que impõe ao modelo uma estrutura fatorial linear, preservando a intuição econômica clássica ao mesmo tempo em que a insere em um arcabouço probabilístico completo.
-
-Para cada ativo $i$, o retorno no período $t+1$ é descrito como a soma de três componentes: um intercepto específico, uma combinação linear dos fatores latentes e um termo idiossincrático. Formalmente,
+Para cada ativo $i$, o \textit{Decoder} descreve o retorno no período $t+1$ como a soma de três componentes --- um intercepto específico, uma combinação linear dos fatores latentes e um termo idiossincrático:
 
 \begin{equation}
-    r_{i,t+1}
-    =
-    \alpha_{i,t}
-    +
-    \beta_{i,t}^{\top} z_{t+1}
-    +
-    \varepsilon_{i,t+1},
+    r_{i,t+1} = \alpha_{i,t} + \beta_{i,t}^{\top} z_{t+1} + \varepsilon_{i,t+1}.
 \end{equation}
 
-em que $\alpha_{i,t}$ representa o componente não explicado pelos fatores comuns, $\beta_{i,t} \in \mathbb{R}^{F}$ mede a exposição do ativo aos fatores sistemáticos e $\varepsilon_{i,t+1}$ captura a variação específica da empresa. Condicionalmente aos fatores, assume-se que esse termo segue uma distribuição Student-$t$ com escala $\sigma_{i,t}$ e graus de liberdade $\nu_{i,t}$, o que implica que
+O intercepto $\alpha_{i,t}$ captura o retorno esperado do ativo que não depende dos fatores comuns. O produto $\beta_{i,t}^{\top} z_{t+1}$ traduz como o estado do mercado, representado por $z_{t+1}$, se manifesta no retorno desse ativo: se o primeiro fator latente sobe e a primeira entrada de $\beta_{i,t}$ é positiva, o retorno do ativo é puxado para cima proporcionalmente. O termo $\varepsilon_{i,t+1}$ é o resíduo, a parcela do retorno que não pode ser atribuída a nenhum fator comum e que, por construção, é independente entre ativos. Condicionalmente aos fatores, o retorno segue uma distribuição Student-$t$:
 
 \begin{equation}
-    p(r_{i,t+1} \mid z_{t+1}, \mathcal{F}_t)
-    =
-    t_{\nu_{i,t}}
-    \big(
-    \alpha_{i,t} + \beta_{i,t}^{\top} z_{t+1},
-    \sigma_{i,t}
-    \big).
+    p(r_{i,t+1} \mid z_{t+1}, \mathcal{F}_t) = t_{\nu_{i,t}}\big(\alpha_{i,t} + \beta_{i,t}^{\top} z_{t+1},\ \sigma_{i,t}\big).
 \end{equation}
 
-Essa especificação mantém a decomposição tradicional entre risco sistemático e risco idiossincrático. O termo $\beta_{i,t}^{\top} z_{t+1}$ sintetiza a parcela do retorno associada ao estado agregado do mercado, enquanto $\alpha_{i,t}$ e $\varepsilon_{i,t+1}$ representam características próprias do ativo. A diferença fundamental em relação aos modelos lineares convencionais reside no fato de que todos os parâmetros são funções explícitas da informação disponível até o período $t$, permitindo que tanto as exposições fatoriais quanto o risco específico variem ao longo do tempo.
+Todos os parâmetros dessa equação são produzidos pelo \textit{Stock Embedder}. O \textit{Decoder} em si não possui parâmetros treináveis próprios: ele é uma especificação funcional que combina os parâmetros aprendidos com os fatores latentes para produzir a distribuição de cada retorno. Quando os graus de liberdade $\nu_{i,t}$ são baixos (próximos de 4, o mínimo imposto), a distribuição atribui probabilidade substancialmente maior a eventos extremos do que a Gaussiana; à medida que $\nu_{i,t}$ cresce, a Student-$t$ converge para a Normal, de modo que o modelo pode calibrar endogenamente o peso das caudas para cada ativo em cada período.
 
-A escolha da distribuição Student-$t$ amplia a flexibilidade do modelo ao permitir caudas mais pesadas do que a hipótese normal usual, acomodando episódios de volatilidade elevada sem alterar a estrutura fatorial. Como consequência direta dessa construção, os retornos tornam-se independentes entre si quando condicionados ao vetor de fatores latentes: toda a correlação entre ativos emerge exclusivamente da componente sistemática comum $\beta_{i,t}^{\top} z_{t+1}$, e não de qualquer dependência direta entre os termos idiossincráticos. Isso significa que a matriz de covariância condicional dos retornos pode ser obtida em forma fechada a partir dos próprios parâmetros do modelo. Denotando por $B_t$ a matriz cujas linhas são os vetores $\beta_{i,t}$ e por $\Sigma_x$ a matriz diagonal com entradas $\sigma_{i,t}^2$, essa decomposição assume a forma
+Como toda a correlação entre ativos emerge da componente sistemática comum $\beta_{i,t}^{\top} z_{t+1}$, a matriz de covariância condicional dos retornos pode ser obtida em forma fechada. Denotando por $B_t \in \mathbb{R}^{N \times F}$ a matriz cujas linhas são os vetores $\beta_{i,t}$ e por $\Sigma_x \in \mathbb{R}^{N \times N}$ a matriz diagonal com entradas $\sigma_{i,t}^2$:
 
 \begin{equation}
-    \Sigma_{t+1} = \Sigma_x + B_t \Sigma_z B_t^{\top},
+    \Sigma_{t+1} = \Sigma_x + B_t \Sigma_z B_t^{\top}.
     \label{eq:cov_decomp}
 \end{equation}
 
-em que o primeiro termo captura o risco idiossincrático de cada ativo e o segundo concentra toda a dependência cruzada em um componente de baixa dimensão determinado pelos fatores. Essa expressão é a contraparte probabilística da decomposição clássica dos modelos fatoriais e constituirá a base direta para o cálculo das matrizes de covariância utilizadas na avaliação do modelo e na otimização de portfólios.
+O primeiro termo captura o risco idiossincrático de cada ativo. O segundo concentra toda a dependência cruzada em um componente de posto no máximo $F$, de modo que a estrutura de correlação entre $N$ ativos é comprimida em $F$ direções de risco. Essa é a mesma decomposição $\Sigma = B \Sigma_f B^{\top} + \Sigma_\varepsilon$ dos modelos fatoriais clássicos apresentada na revisão da literatura, com a diferença de que aqui $B_t$ e $\Sigma_x$ são condicionais ao período $t$, ajustando-se às condições de mercado correntes. Na avaliação do modelo e na otimização de portfólios, essa expressão será utilizada diretamente para calcular as matrizes de covariância, sem necessidade de simulação de Monte Carlo.
 
-%######################################################################
 
 \subsection{Encoder}
 
-Ao contrário do que o nome pode sugerir, o \textit{Encoder} no \textit{NeuralFactors} não
-constitui um bloco neural adicional: é a solução analítica de um problema de inferência
-bayesiana induzido pela própria estrutura do modelo. Para compreender como essa solução
-é derivada, é necessário partir do problema inverso ao processo generativo.
+O processo generativo do modelo descreve como os retornos são gerados a partir dos fatores latentes. Durante o treinamento, o problema é inverso: observam-se os retornos $r_{t+1}$ e busca-se inferir quais valores dos fatores tornam esses dados mais prováveis. O \textit{Encoder} realiza essa inferência.
 
-A especificação do modelo define como os retornos são gerados a partir dos fatores
-latentes: sorteia-se um vetor $z_{t+1}$ e, condicionalmente a ele, produzem-se os
-retornos individuais. Durante o treinamento, entretanto, o problema é inverso.
-Observam-se os retornos e busca-se inferir quais valores dos fatores tornam esses dados
-mais prováveis. Essa inversão entre geração e inferência torna necessária a construção
-de uma distribuição posterior para os fatores latentes.
-
-Do ponto de vista formal, a estimação do modelo envolve a maximização da verossimilhança
-condicional
+A necessidade do \textit{Encoder} decorre da função objetivo do treinamento. Para maximizar a verossimilhança condicional $p(r_{t+1} \mid \mathcal{F}_t)$, é preciso integrar sobre todas as possíveis realizações dos fatores latentes:
 
 \[
-p(r_{t+1} \mid \mathcal{F}_t)
-=
-\int
-p(r_{t+1} \mid z_{t+1}, \mathcal{F}_t)
-\, p(z_{t+1})
-\, dz_{t+1},
+p(r_{t+1} \mid \mathcal{F}_t) = \int p(r_{t+1} \mid z_{t+1}, \mathcal{F}_t) \, p(z_{t+1}) \, dz_{t+1}.
 \]
 
-expressão que requer integrar sobre todas as possíveis realizações de $z_{t+1}$. Sob a
-especificação adotada — prior Student-$t$ e distribuição condicional também Student-$t$
-— essa integral não possui forma fechada, e o posterior exato
-$p(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)$ não pode ser obtido analiticamente. A ausência
-de conjugação entre as distribuições inviabiliza a derivação direta do posterior. Para contornar essa dificuldade, introduz-se uma distribuição aproximada
-$q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)$ que desempenha o papel de posterior
-variacional. A escolha da forma funcional de $q(\cdot)$ constitui a decisão
-metodológica central do componente de inferência.
+Essa integral é intratável, e a abordagem variacional utilizada no treinamento (descrita na seção seguinte) requer uma distribuição auxiliar $q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)$ que aproxime a posterior verdadeira dos fatores. O \textit{Encoder} é a construção dessa distribuição.
 
-Diferentemente de muitas arquiteturas de \textit{variational autoencoders}, o
-\textit{NeuralFactors} não parametriza esse posterior por meio de uma rede neural
-independente. A própria estrutura linear imposta pelo \textit{Decoder} permite explorar
-uma aproximação analítica. O ponto de partida é substituir as distribuições Student-$t$
-— tanto do prior quanto do decoder — por distribuições Normais equivalentes via
-\textit{moment matching}: para cada Student-$t$ com média $\mu$, escala $\sigma$ e
-$\nu$ graus de liberdade, a Gaussiana correspondente é
-$\mathcal{N}\!\left(\mu,\, \frac{\nu}{\nu - 2}\,\sigma^2\right)$, que preserva os dois
-primeiros momentos da distribuição original. Com essa substituição, o sistema passa a
-ter prior Gaussiano e verossimilhança Gaussiana, configurando um modelo linear Gaussiano
-condicional para o qual vale a conjugação Normal-Normal: o posterior resultante é também
-Gaussiano e admite forma fechada.
+A posterior verdadeira dos fatores é definida pelo teorema de Bayes: $p(z_{t+1} \mid r_{t+1}, \mathcal{F}_t) \propto p(r_{t+1} \mid z_{t+1}, \mathcal{F}_t) \, p(z_{t+1})$. Para que essa expressão seja calculável em forma fechada, verossimilhança e \textit{prior} precisam pertencer a famílias conjugadas --- o produto das duas densidades deve resultar em uma distribuição de forma conhecida, da qual se possam extrair média e covariância diretamente. A família Gaussiana possui essa propriedade: quando \textit{prior} e verossimilhança são ambos Normais, o posterior é também Normal com fórmula fechada, resultado que o PPCA explora conforme discutido na revisão da literatura. No \textit{NeuralFactors}, contudo, tanto o \textit{prior} $p(z_{t+1}) = t_{\nu_z}(\mu_z, \Sigma_z)$ quanto a distribuição condicional dos retornos são Student-$t$, e a família Student-$t$ não é conjugada consigo mesma. O posterior exato não pode ser obtido analiticamente.
 
-Sob essa aproximação, a distribuição variacional assume forma Normal,
+A solução consiste em aproximar as distribuições Student-$t$ por distribuições Normais antes de calcular o posterior, utilizando \textit{moment matching}: para cada Student-$t$ com média $\mu$, escala $\sigma$ e $\nu$ graus de liberdade, constrói-se a Gaussiana que preserva os dois primeiros momentos da distribuição original. A variância de uma Student-$t$ com escala $\sigma$ e $\nu$ graus de liberdade é $\frac{\nu}{\nu - 2} \sigma^2$ (válida para $\nu > 2$), de modo que a Gaussiana equivalente é $\mathcal{N}\!\left(\mu,\, \frac{\nu}{\nu - 2}\,\sigma^2\right)$. Essa substituição é aplicada tanto ao \textit{prior} dos fatores quanto à distribuição condicional dos retornos, e com ela o sistema passa a ter \textit{prior} Gaussiano e verossimilhança Gaussiana, recuperando a conjugação Normal-Normal.
+
+Sob a aproximação Gaussiana, os retornos condicionais de cada ativo são modelados como $r_{i,t+1} \mid z_{t+1} \sim \mathcal{N}\!\left(\alpha_{i,t} + \beta_{i,t}^{\top} z_{t+1},\, \tilde{\sigma}_{i,t}^2\right)$, onde $\tilde{\sigma}_{i,t}^2 = \frac{\nu_{i,t}}{\nu_{i,t} - 2} \sigma_{i,t}^2$ é a variância ajustada pelo \textit{moment matching}. De forma análoga, o \textit{prior} aproximado é $z_{t+1} \sim \mathcal{N}(\mu_z, \tilde{\Sigma}_z)$, com $\tilde{\Sigma}_z = \frac{\nu_z}{\nu_z - 2} \Sigma_z$. Como a verossimilhança é um produto de $N$ Normais independentes (condicionalmente a $z$), o modelo conjunto pode ser escrito em forma matricial: $r_{t+1} \mid z_{t+1} \sim \mathcal{N}(\alpha_t + B_t z_{t+1},\, \Sigma_x)$, onde $\alpha_t$ é o vetor de interceptos, $B_t$ a matriz de exposições e $\Sigma_x$ a diagonal das variâncias idiossincráticas ajustadas. Esse é um modelo linear Gaussiano padrão, e o posterior de $z_{t+1}$ é dado pela fórmula da regressão linear bayesiana:
 
 \[
-q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)
-=
-\mathcal{N}
-\!\big(
-\mu_{z|B,r},\,
-\Sigma_{z|B}
-\big),
+q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t) = \mathcal{N}\!\big(\mu_{z|B,r},\, \Sigma_{z|B}\big),
 \]
 
-em que a covariância posterior é dada por
+com covariância posterior
 
 \[
-\Sigma_{z|B}
-=
-\left(
-\Sigma_z^{-1}
-+
-B_t^{\top}
-\Sigma_x^{-1}
-B_t
-\right)^{-1},
+\Sigma_{z|B} = \left(\Sigma_z^{-1} + B_t^{\top} \Sigma_x^{-1} B_t\right)^{-1},
 \]
 
-e a média condicional por
+e média condicional
 
 \[
-\mu_{z|B,r}
-=
-\Sigma_{z|B}
-\left(
-\Sigma_z^{-1}\mu_z
-+
-B_t^{\top}
-\Sigma_x^{-1}
-(r_{t+1} - \alpha_t)
-\right).
+\mu_{z|B,r} = \Sigma_{z|B} \left(\Sigma_z^{-1} \mu_z + B_t^{\top} \Sigma_x^{-1} (r_{t+1} - \alpha_t)\right).
 \]
 
-A estrutura dessas expressões tem interpretação direta em termos bayesianos. A
-covariância $\Sigma_{z|B}$ é determinada pela soma de duas matrizes de precisão:
-$\Sigma_z^{-1}$, que representa a informação trazida pelo prior, e
-$B_t^{\top}\Sigma_x^{-1}B_t$, que representa a informação trazida pelos dados
-observados — ponderada pela precisão idiossincrática de cada ativo e projetada no
-espaço dos fatores via $B_t$. A média $\mu_{z|B,r}$ é então o ponto que equilibra
-essas duas fontes de informação: quando o prior é forte relativamente aos dados, os
-fatores inferidos são puxados em direção a $\mu_z$; quando os dados são informativos,
-dominam. O termo $(r_{t+1} - \alpha_t)$ — em que $\alpha_t$ denota o vetor cujas entradas
-são os interceptos individuais $\alpha_{i,t}$ — remove o componente idiossincrático
-dos retornos antes dessa ponderação, isolando a parcela do sinal atribuível aos
-fatores sistemáticos.
+Para simplificação da notação, as variâncias ajustadas pelo \textit{moment matching} estão incorporadas em $\Sigma_x$ e $\Sigma_z$ nas expressões acima.
 
-Por fim, cabe precisar o papel do condicionamento em $\mathcal{F}_t$ na distribuição
-prior. Na formulação do CIWAE, a função objetivo escreve $p(z^{(k)} \mid \mathcal{F}_t)$,
-sugerindo que o prior dos fatores varia com a informação disponível. Na prática, os
-parâmetros do prior — $\mu_z$, $\Sigma_z$ e $\nu_z$ — são tratados como parâmetros
-globais aprendidos durante o treinamento, fixos ao longo do tempo. O condicionamento em
-$\mathcal{F}_t$ é, portanto, uma notação de consistência com o processo generativo
-condicional, e não indica variação temporal do prior em si. Toda a dinâmica temporal do
-modelo é capturada pelo \textit{Stock Embedder}, que produz exposições $\beta_{i,t}$ e
-parâmetros idiossincráticos $\sigma_{i,t}$ e $\nu_{i,t}$ específicos para cada período.
-O prior fixo atua como regularização global, evitando que os fatores latentes divirjam
-arbitrariamente durante o treinamento.
+A estrutura dessas expressões tem interpretação direta em termos bayesianos. A covariância posterior $\Sigma_{z|B}$ é o inverso da soma de duas matrizes de precisão: $\Sigma_z^{-1}$, que representa a informação trazida pelo \textit{prior}, e $B_t^{\top} \Sigma_x^{-1} B_t$, que representa a informação trazida pelos dados. Quanto maior a quantidade de ativos com exposições fatoriais altas e baixo ruído idiossincrático, maior a contribuição do segundo termo, e mais concentrado fica o posterior. A média $\mu_{z|B,r}$ equilibra essas duas fontes: é uma média ponderada entre a crença prévia $\mu_z$, puxada pela precisão do \textit{prior} $\Sigma_z^{-1}$, e a evidência dos dados, puxada por $B_t^{\top} \Sigma_x^{-1} (r_{t+1} - \alpha_t)$. Quando o \textit{prior} é forte relativamente aos dados, os fatores inferidos são puxados em direção a $\mu_z$; quando os dados são informativos, a evidência domina. O termo $(r_{t+1} - \alpha_t)$ remove os interceptos idiossincráticos dos retornos antes da ponderação, isolando a parcela atribuível aos fatores comuns. O produto $B_t^{\top} \Sigma_x^{-1}$ projeta esses retornos residuais no espaço dos fatores, ponderando cada ativo pelo inverso de sua variância idiossincrática --- ativos com menor ruído recebem maior peso na inferência.
 
+O \textit{Encoder} não possui parâmetros treináveis próprios: as expressões acima são funções determinísticas dos parâmetros produzidos pelo \textit{Stock Embedder} ($\alpha$, $\beta$, $\sigma$) e dos parâmetros globais do \textit{prior} ($\mu_z$, $\Sigma_z$). A inferência realizada é puramente algébrica, uma sequência de operações matriciais que resolve o sistema linear bayesiano em forma fechada. O \textit{Encoder} é utilizado exclusivamente durante o treinamento, onde fornece a distribuição $q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)$ da qual se extraem amostras para o cálculo da função de perda CIWAE. Na inferência, os retornos de $t+1$ ainda não foram observados, de modo que os fatores são amostrados diretamente do \textit{prior} $p(z_{t+1}) = t_{\nu_z}(\mu_z, \Sigma_z)$.
+
+Cabe precisar que os parâmetros do \textit{prior} --- $\mu_z$, $\Sigma_z$ e $\nu_z$ --- são parâmetros globais aprendidos durante o treinamento, fixos ao longo do tempo. A notação $p(z^{(k)} \mid \mathcal{F}_t)$ que aparece na formulação do CIWAE é de consistência com o processo generativo condicional, e não indica variação temporal do \textit{prior}. Toda a dinâmica temporal do modelo é capturada pelo \textit{Stock Embedder}, que produz $\beta_{i,t}$, $\sigma_{i,t}$ e $\nu_{i,t}$ específicos para cada período. O \textit{prior} fixo atua como regularização global, evitando que os fatores latentes divirjam arbitrariamente durante o treinamento.
 %################################################
 
 \section{Treinamento}
