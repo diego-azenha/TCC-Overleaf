@@ -4,408 +4,149 @@
 \section{\textit{Factor Investing}}
 % ============================================================
 
-\subsection{Origens da Teoria Fatorial}
+\subsection{A Estrutura Fatorial dos Retornos}
 
-A teoria fatorial em finanças surge da necessidade de compreender como o risco é
-sistematicamente remunerado nos mercados de capitais. O ponto de partida dessa
-abordagem é o \textit{Capital Asset Pricing Model} (CAPM), formulado por
-\textcite{sharpe1964} e expandido por \textcite{lintner1965}. O modelo estabelece
-que o retorno esperado de um ativo é proporcional ao seu risco sistemático,
-representado pela sensibilidade ao portfólio de mercado:
+Os retornos de ativos distintos variam de forma coordenada. Movimentos nas taxas de juros afetam valuations de forma generalizada; choques cambiais reordenam setores inteiros; períodos de aversão ao risco elevam correlações entre ativos que, em condições normais, se comportam de forma relativamente independente. Essa covariância reflete a exposição comum das empresas a fontes de risco que atravessam o mercado como um todo, e separar esse componente sistemático da variação genuinamente específica de cada empresa é o problema que os modelos fatoriais se propõem a resolver.
 
-\begin{equation}
-    \mathbb{E}[R_i] = R_f + \beta_i \big(\mathbb{E}[R_m] - R_f\big),
-\end{equation}
+A primeira resposta formal a esse problema foi o modelo diagonal de Sharpe (1963), que decompôs o retorno de cada ativo em uma componente explicada por um único fator de mercado e um resíduo idiossincrático não correlacionado entre ativos. O CAPM de Sharpe (1964) formalizou essa estrutura em equilíbrio, mas a hipótese de um fator único mostrou-se empiricamente insuficiente: King (1966) demonstrou que os retornos no mercado norte-americano apresentam dependências setoriais que o índice de mercado não captura. Ross (1976) generalizou o arcabouço com a \textit{Arbitrage Pricing Theory}, mostrando que, sob ausência de arbitragem, os retornos esperados são determinados por sensibilidades a múltiplos fatores sistemáticos, cada um carregando seu próprio prêmio de risco.
 
-em que $\mathbb{E}[R_i]$ é o retorno esperado do ativo $i$, $R_f$ representa a
-taxa livre de risco, $\mathbb{E}[R_m]$ o retorno esperado da carteira de mercado
-e $\beta_i$ mede a covariância do ativo com o mercado. A proposição central do
-CAPM é que apenas os riscos sistemáticos — aqueles que não podem ser eliminados
-pela diversificação — são compensados com retorno esperado adicional, enquanto o
-risco idiossincrático é diversificável e, portanto, não remunerado.
-
-O CAPM forneceu um arcabouço teórico simples e testável, consolidando a ideia de
-que a relação entre risco e retorno é linear e unidimensional. À medida que novas
-evidências empíricas surgiram, porém, suas limitações se tornaram evidentes.
-\textcite{jensen1968} mostrou que gestores de fundos obtinham retornos anormais,
-o chamado \textit{alpha}, contrariando a hipótese de eficiência de mercado. Poucos
-anos depois, \textcite{banz1981} documentou o "efeito tamanho", segundo o qual
-empresas de menor capitalização apresentavam retornos médios superiores aos de
-empresas maiores, mesmo após o controle pelo risco de mercado. Esses resultados
-indicaram a existência de outras dimensões de risco sistemático não contempladas
-pelo modelo de fator único.
-
-A \textit{Arbitrage Pricing Theory} (APT), proposta por \textcite{ross1976},
-representou o passo seguinte na evolução da precificação de ativos. A APT manteve
-o princípio da ausência de arbitragem, mas generalizou a relação entre risco e
-retorno ao admitir múltiplos fatores sistemáticos. Sua formulação é expressa por:
+A hipótese central que organiza essa classe de modelos é que a covariância entre retornos pode ser explicada por um número pequeno de fontes de risco comuns, muito menor do que o número total de ativos, e que o restante da variação não se propaga entre empresas. Sob essa hipótese, o vetor de retornos de $N$ ativos no período $t$ é escrito como
 
 \begin{equation}
-    \mathbb{E}[R_i] = R_f + \beta_{i1}\lambda_1 + \beta_{i2}\lambda_2 + \cdots
-    + \beta_{ik}\lambda_k,
+    r_t = \alpha + B f_t + \varepsilon_t,
 \end{equation}
 
-em que $\lambda_k$ representa o prêmio de risco associado ao fator $k$ e
-$\beta_{ik}$ a sensibilidade do ativo a esse fator. Essa generalização ampliou
-o alcance analítico do CAPM, permitindo incorporar fatores macroeconômicos,
-setoriais e fundamentalistas na explicação dos retornos. O modelo mostrou que os
-retornos de um ativo podem ser decompostos em uma combinação de riscos comuns e
-um componente idiossincrático não remunerado, estabelecendo a base conceitual da
-análise fatorial moderna.
+onde $f_t \in \mathbb{R}^K$ representa os retornos dos $K$ fatores comuns, $B \in \mathbb{R}^{N \times K}$ é a matriz de exposições fatoriais, $\alpha \in \mathbb{R}^N$ é o vetor de interceptos e $\varepsilon_t \in \mathbb{R}^N$ captura o componente idiossincrático de cada ativo. O componente $\varepsilon_t$ tem média zero, é independente de $f_t$ e possui covariância $\Sigma_\varepsilon$ diagonal, o que implica que, dado o estado dos fatores, os retornos dos ativos são condicionalmente independentes entre si. Modelos que relaxam a diagonalidade para exigir apenas esparsidade em $\Sigma_\varepsilon$ são chamados de aproximados, em contraposição aos modelos estritos.
 
-Durante a década de 1970, Barr Rosenberg e colaboradores transformaram esses
-fundamentos teóricos em modelos multifatoriais aplicados, criando ferramentas
-práticas de mensuração de risco. Suas formulações permitiram decompor o retorno
-dos ativos em componentes sistemáticos — associados a características
-compartilhadas entre empresas — e componentes específicos, relacionados a riscos
-individuais. Essa estrutura passou a orientar a análise de portfólios e deu
-origem à moderna gestão de risco quantitativa.
+Condicionalmente ao vetor de fatores $f_t$, o retorno esperado de cada ativo em excesso ao intercepto é $\mathbb{E}[r_{i,t} - \alpha_i \mid f_t] = \beta_i^\top f_t$, uma combinação linear dos retornos dos fatores ponderada pelas exposições do ativo. O modelo pode ser lido como um sistema no qual um conjunto pequeno de fatores se transmite a um conjunto grande de ativos por meio dos loadings, conforme ilustrado na Figura \ref{fig:graphical_model}. Quando $B$ é esparso, como ocorre naturalmente com fatores de setor e país, cada fator conecta-se apenas a um subconjunto de ativos. Essa estrutura é o que torna o modelo parcimonioso: em vez de estimar $N(N-1)/2$ covariâncias individuais, toda a dependência cruzada é comprimida em $K \ll N$ fatores e suas respectivas exposições.
 
-O conjunto dessas contribuições consolidou o princípio central da teoria fatorial:
-o retorno esperado de um ativo depende de suas exposições a múltiplas fontes de
-risco sistemático. A transição do CAPM à APT, e desta aos modelos empíricos
-multifatoriais, estabeleceu as bases da precificação contemporânea e preparou
-o terreno para o desenvolvimento das estratégias de investimento por fatores
-que dominaram as décadas seguintes.
+\begin{figure}[h]
+\centering
+% PLACEHOLDER: Figura 4.2 de Paleologo — modelo gráfico com fatores, loadings e ativos
+\caption{Interpretação generativa do modelo fatorial: fatores propagam-se aos retornos dos ativos por meio das exposições fatoriais \textcite{paleologo2025}.}
+\label{fig:graphical_model}
+\end{figure}
 
-%------------------------------------------------------------
-\subsection{Consolidação dos Modelos Multifatoriais}
-
-O avanço da teoria fatorial a partir da década de 1970 consolidou uma nova
-compreensão sobre a formação dos retornos dos ativos. A transição do modelo de
-fator único para estruturas multifatoriais foi impulsionada por evidências
-empíricas que demonstraram as limitações do CAPM em capturar a heterogeneidade
-dos prêmios de risco observados no mercado. Com base na \textit{Arbitrage Pricing
-Theory} de \textcite{ross1976}, pesquisadores buscaram identificar empiricamente
-quais fatores explicavam de forma consistente as variações nos retornos das ações.
-
-Um marco nesse processo foi o estudo de \textcite{rosenberg1985}, que apresentou
-evidências robustas de que características fundamentalistas, como valor
-patrimonial e relação preço-lucro, estavam associadas a retornos superiores. A
-partir de modelos empíricos multifatoriais, Rosenberg mostrou que exposições a
-diferentes dimensões de risco — setoriais, financeiros e de avaliação —
-explicavam parcela substancial da variância dos retornos. Esses resultados
-reforçaram a ideia de que o risco de mercado, isoladamente, não era suficiente
-para explicar o comportamento dos preços, abrindo espaço para a incorporação de
-fatores baseados em fundamentos econômicos observáveis.
-
-As contribuições de \textcite{fama1992} e \textcite{fama1993} consolidaram de
-forma definitiva a abordagem multifatorial na precificação de ativos. Os autores
-demonstraram que dois fatores adicionais ao CAPM — o tamanho das empresas
-(\textit{small minus big}, SMB) e o valor (\textit{high minus low}, HML) —
-apresentavam poder explicativo significativo sobre os retornos médios das ações.
-O modelo de três fatores, formalizado por Fama e French, é representado por:
+Dessas hipóteses decorre a decomposição da covariância dos retornos. Como $\alpha$ é constante e $\varepsilon_t$ é independente de $f_t$ com média zero, a covariância de $r_t$ assume a forma
 
 \begin{equation}
-    R_{it} - R_{ft} = \alpha_i + \beta_i (R_{mt} - R_{ft}) + s_i \, SMB_t
-    + h_i \, HML_t + \varepsilon_{it},
+    \Sigma = B \Sigma_f B^\top + \Sigma_\varepsilon,
 \end{equation}
 
-em que $(R_{it} - R_{ft})$ é o retorno em excesso do ativo $i$,
-$(R_{mt} - R_{ft})$ o prêmio de mercado, $SMB_t$ o fator associado ao tamanho
-e $HML_t$ o fator de valor. O coeficiente $\alpha_i$ representa o retorno não
-explicado pelos fatores sistemáticos. Esse modelo ampliou a capacidade explicativa
-do CAPM e tornou-se referência na avaliação de desempenho e na modelagem de risco
-em finanças.
+onde $\Sigma_f$ é a matriz de covariância dos fatores. O primeiro termo concentra toda a dependência cruzada entre ativos em uma estrutura de posto $K$. O segundo captura o risco específico de cada empresa, que não se propaga às demais. Para uma carteira com pesos $w \in \mathbb{R}^N$, essa decomposição separa a variância total em uma parcela sistemática, determinada pela exposição líquida da carteira ao vetor de fatores $B^\top w$, e uma parcela idiossincrática, determinada pela soma ponderada das variâncias específicas. Essa separação é a base da atribuição de risco: ela permite identificar, por exemplo, quanto da variância de uma estratégia provém de uma exposição implícita ao câmbio ou aos juros, e quanto provém da seleção de ativos individuais.
 
-O fator valor resgatou, sob uma formulação quantitativa, os princípios do
-\textit{value investing} de \textcite{graham1934} e \textcite{graham1949}. Ações
-negociadas a múltiplos baixos em relação a seus fundamentos — lucro, patrimônio
-líquido ou fluxo de caixa — tendem a gerar retornos superiores no longo prazo,
-refletindo uma compensação por riscos econômicos e financeiros. O fator tamanho,
-por sua vez, incorporou as evidências de \textcite{banz1981}, segundo as quais
-empresas menores, mais voláteis e com menor liquidez apresentam prêmios de risco
-superiores às grandes corporações.
-
-Posteriormente, \textcite{carhart1997} expandiu o modelo ao incluir o fator
-\textit{momentum}, associado à persistência de retornos no curto e médio prazo.
-O modelo de quatro fatores mostrou que ações com desempenho recente positivo
-tendem a continuar se valorizando, enquanto as de desempenho negativo mantêm
-tendência oposta. Esse resultado, observado de forma robusta em diferentes
-mercados, reforçou a importância de componentes comportamentais e de inércia
-de preços na estrutura dos retornos.
-
-Com o acúmulo de evidências, o modelo multifatorial passou a ser tratado como
-uma extensão natural do paradigma de precificação de ativos. Fatores clássicos
-— valor, tamanho, momentum, lucratividade e investimento — foram incorporados ao
-modelo de cinco fatores de \textcite{fama2015}, que buscou capturar dimensões
-adicionais de risco ligadas à rentabilidade operacional e à política de
-reinvestimento das firmas. Esse refinamento ampliou a cobertura empírica da
-teoria fatorial, conectando os prêmios de risco a fundamentos econômicos
-mensuráveis.
-
-A consolidação desses estudos redefiniu a análise de risco e desempenho em
-finanças. A demonstração de que múltiplos fatores explicam de forma consistente
-os retornos médios de longo prazo deu origem à filosofia do \textit{factor
-investing}, baseada na construção de portfólios orientados por exposições
-sistemáticas a prêmios de risco. Essa estrutura tornou-se o núcleo conceitual
-da gestão quantitativa moderna, integrando teoria e prática na mensuração e
-na alocação de risco.
 
 %------------------------------------------------------------
-\subsection{Evolução Recente do \textit{Factor Investing}}
-
-A consolidação dos modelos multifatoriais de \textcite{fama1993} e
-\textcite{carhart1997} transformou o \textit{factor investing} em um dos pilares
-da teoria financeira moderna e da gestão quantitativa de portfólios. Esses
-estudos mostraram que parte significativa da variação dos retornos das ações pode
-ser explicada por exposições sistemáticas a fatores comuns, como valor, tamanho
-e momentum. A estrutura fatorial passou a orientar práticas de mensuração de
-desempenho, construção de carteiras e atribuição de risco, influenciando
-diretamente a forma como investidores e gestores avaliam o equilíbrio entre
-risco e retorno.
-
-Nas décadas seguintes, o arcabouço teórico se expandiu e ganhou novas
-interpretações. A incorporação de fatores adicionais, como qualidade, baixa
-volatilidade e investimento, ampliou o escopo analítico e reforçou a visão de
-que os retornos médios refletem múltiplas dimensões de risco sistemático. Essa
-ampliação, somada ao avanço da disponibilidade de dados e à evolução das
-ferramentas estatísticas, consolidou o \textit{factor investing} como a base
-conceitual da gestão quantitativa. Modelos posteriores, como o de cinco fatores
-de \textcite{fama2015}, buscaram capturar características relacionadas à
-rentabilidade e à política de reinvestimento das empresas, reforçando o vínculo
-entre fundamentos econômicos e prêmios de risco.
-
-O amadurecimento do campo revelou, contudo, algumas limitações. O crescimento
-acelerado da literatura resultou em um número crescente de fatores propostos,
-fenômeno conhecido como \textit{factor zoo}. A multiplicação de variáveis
-explicativas levantou dúvidas sobre a robustez e a validade econômica de várias
-delas, já que muitos fatores não apresentaram consistência fora das amostras
-originais. Paralelamente, observou-se que os prêmios associados aos fatores
-clássicos variam no tempo, com ciclos de desempenho e reversão que dependem do
-ambiente macroeconômico e das condições setoriais. O fator valor, por exemplo,
-apresentou longos períodos de retorno inferior em mercados dominados por empresas
-de tecnologia e ativos intangíveis, enquanto fatores como qualidade e momentum
-alternaram fases de destaque e retração. Esses resultados reforçaram a ideia de
-que as exposições a fatores de risco são dinâmicas e sensíveis a mudanças de
-regime.
-
-A literatura recente passou a concentrar esforços em aprimorar a mensuração e
-a integração dos fatores existentes, em vez de propor novos. O avanço das
-economias baseadas em ativos intangíveis mostrou que indicadores tradicionais,
-como o \textit{book-to-price}, podem subestimar empresas cujo valor está ligado
-à inovação, marca e capital intelectual. Estudos posteriores sugeriram ajustes
-para incluir a capitalização de gastos com pesquisa e desenvolvimento, o
-reconhecimento de ativos intangíveis e o uso de métricas setoriais e de
-rentabilidade mais amplas. Essas revisões buscam preservar a lógica da teoria
-fatorial, mas com métricas mais aderentes à estrutura produtiva e informacional
-das empresas modernas.
-
-O desenvolvimento computacional também redefiniu o processo de estimação
-fatorial. O aumento da capacidade de processamento e o acesso a grandes bases
-de dados permitiram análises mais extensas e complexas. Informações contábeis,
-de mercado e macroeconômicas passaram a ser combinadas com dados alternativos,
-como relatórios de analistas, notícias e fluxos de capital. Essa ampliação levou
-à necessidade de modelos mais flexíveis, capazes de lidar com múltiplas fontes
-de informação e de capturar relações não lineares entre fatores e retornos.
-
-A literatura contemporânea caracteriza essa fase como uma transição entre a
-consolidação empírica e a sofisticação analítica. O foco deslocou-se da
-descoberta de novos fatores para a capacidade dos modelos de representar a
-natureza dinâmica das exposições ao risco. Em um ambiente caracterizado por
-maior complexidade e interdependência entre variáveis, os modelos passaram a
-buscar estruturas que incorporassem variação temporal, interações entre fatores
-e ajustes a diferentes regimes de mercado. Essa adaptação mantém o princípio
-central da teoria fatorial — decompor os retornos em componentes sistemáticos
-e idiossincráticos —, mas redefine o processo de estimação e atualização desses
-componentes de forma mais responsiva às condições econômicas.
-
-A evolução do \textit{factor investing} reflete, portanto, a maturidade de uma
-disciplina que, embora consolidada, continua em desenvolvimento. O campo preserva
-o compromisso com a explicação sistemática do risco e do retorno, mas reconhece
-que a complexidade crescente dos mercados demanda modelos com maior capacidade
-de adaptação e aprendizado. Esse movimento contínuo de refinamento teórico e
-metodológico estabeleceu as bases para a formulação de abordagens recentes, que
-buscam unir a tradição da análise fatorial a estruturas de modelagem orientadas
-por dados, como a proposta de \textcite{gopal2024}.
-
-%------------------------------------------------------------
-\subsection{O Modelo \textit{NeuralFactors}}
-
-\textcite{gopal2024} apresenta uma reformulação da análise fatorial voltada
-para a estimação direta dos fatores a partir dos dados de retornos. O modelo,
-denominado \textit{NeuralFactors}, parte do princípio central da teoria
-fatorial: os retornos de um ativo podem ser decompostos em uma componente
-sistemática, associada a fatores comuns, e uma componente idiossincrática. A
-diferença está no procedimento de identificação dos fatores. Em vez de
-defini-los a partir de características previamente escolhidas, como valor ou
-tamanho, o modelo aprende esses vetores de risco de forma endógena, com base
-nas correlações e covariâncias observadas nos dados.
-
-Nos modelos clássicos, como os de \textcite{fama1993} e \textcite{carhart1997},
-os fatores são construídos de maneira exógena, por meio de portfólios que
-representam estilos de investimento específicos. Essa abordagem depende de
-hipóteses fixas sobre quais características geram prêmios de risco e de
-relações essencialmente lineares entre fatores e retornos. O
-\textit{NeuralFactors} substitui esse processo por uma estrutura probabilística
-na qual os fatores não são portfólios observáveis, mas variáveis latentes que
-emergem do próprio padrão de dependência observado nos dados. A decomposição
-clássica entre risco sistemático e idiossincrático é preservada, mas os fatores
-passam a ser obtidos como resultado de um processo de aprendizado estatístico,
-e não como construções definidas a priori pelo pesquisador.
-
-Essa mudança de perspectiva tem implicações econômicas concretas. Modelos
-baseados em regressão estimam exposições fatoriais e retornos esperados, mas
-não caracterizam a incerteza associada a essas estimativas nem descrevem o
-comportamento conjunto dos ativos em cenários extremos. Ao tratar os retornos
-como realizações de uma distribuição de probabilidade condicional — e não apenas
-como valores a serem previstos pontualmente —, o \textit{NeuralFactors} permite
-quantificar a estrutura de dependência entre ativos de forma mais completa,
-incluindo correlações em períodos de estresse e a espessura das caudas da
-distribuição. Essa capacidade é precisamente o que torna o modelo útil para
-aplicações em gestão de risco e otimização de portfólios, nos quais a
-distribuição completa dos retornos importa tanto quanto sua média. Como os
-fatores são latentes e precisam ser inferidos a partir dos retornos observados,
-a estimação do modelo exige métodos de aprendizado probabilístico cujos
-fundamentos são introduzidos na seção seguinte.
-
-O modelo pode ser entendido como uma generalização da análise fatorial
-tradicional, na qual a relação entre fatores e retornos não é imposta por
-especificações paramétricas fixas. Ao inferir os fatores a partir dos dados, o
-\textit{NeuralFactors} incorpora a possibilidade de mudanças no padrão de
-dependência entre ativos ao longo do tempo, ajustando-se de forma automática
-às condições correntes do mercado. Essa característica o torna adequado a
-ambientes de alta dimensionalidade, nos quais o número de ativos e as relações
-entre eles tornam-se complexos demais para serem descritos por estruturas
-lineares estáticas.
-
-Os resultados apresentados por \textcite{gopal2024} indicam que o modelo supera
-abordagens lineares tradicionais em tarefas de previsão das correlações entre
-ativos e da precisão na estimação da estrutura de risco ao longo do tempo. A
-capacidade de extrair fatores latentes diretamente dos dados melhora a
-representação das dependências entre ativos e reflete com mais precisão as
-flutuações do risco conjunto. Embora empregue técnicas de aprendizado de
-máquina, o modelo preserva a lógica conceitual do \textit{factor investing}:
-explicar os retornos por meio de exposições comuns a fontes sistemáticas de
-risco.
-
-A formulação de \textcite{gopal2024} representa a continuidade natural da
-literatura sobre modelos multifatoriais. Ela mantém os fundamentos da teoria
-fatorial, mas substitui o processo de estimação baseado em regressões lineares
-por um mecanismo de aprendizado estatístico capaz de lidar com a
-dimensionalidade e a complexidade dos mercados atuais. Para que essa construção
-seja compreendida em sua totalidade, é necessário introduzir os fundamentos
-probabilísticos que a sustentam — o que a seção seguinte se propõe a fazer.
-
-% ============================================================
-\section{Arcabouço Probabilístico}
-% ============================================================
+\subsection{Abordagens de Estimação e Limitações Estruturais}
  
-A tradição do \textit{factor investing} revisada na seção anterior define os
-fatores de risco de forma exógena e estima sua relação com os retornos por meio
-de regressão. O \textit{NeuralFactors} opera sob uma lógica fundamentalmente
-diferente: os fatores não são observáveis, e os retornos dos ativos são tratados
-como realizações de uma distribuição de probabilidade gerada por esses fatores
-latentes. Compreender essa construção requer dois pilares conceituais distintos
-da tradição clássica do \textit{factor investing} — a inferência bayesiana e sua
-aplicação a modelos fatoriais com variáveis latentes — apresentados a seguir.
+A estrutura fatorial descrita na seção anterior é comum a toda essa classe de modelos, mas a pergunta de onde vêm os fatores e as exposições é o que diferencia as abordagens práticas — e essa escolha tem consequências diretas para o que o modelo consegue e não consegue capturar sobre a dinâmica de risco dos ativos.
  
-%------------------------------------------------------------
-\subsection{Inferência Bayesiana}
+Nos modelos de características, os fatores são portfólios construídos a partir de atributos observáveis das empresas. \textcite{fama1993} e \textcite{carhart1997} são os exemplos canônicos: o fator SMB (\textit{small minus big}) é um portfólio comprado em ações de baixa capitalização e vendido em ações de alta capitalização; o HML (\textit{high minus low}) replica essa estrutura para o índice valor patrimonial sobre preço; e o MOM captura a persistência de retornos recentes. As exposições de cada ativo a esses fatores são então estimadas por regressão em série temporal sobre os retornos dos portfólios. A principal vantagem dessa abordagem é a interpretabilidade: cada coluna de $B$ corresponde a um fator com significado econômico claro, e a exposição de um ativo ao fator valor, por exemplo, pode ser diretamente relacionada à sua política de precificação e aos fundamentos da empresa. Na prática, a matriz $B$ combina fatores de natureza distinta — colunas de estilo com valores contínuos padronizados, colunas de setor e país com valores binários —, o que permite decompor o risco de uma carteira em contribuições setoriais, geográficas e de estilo de forma legível (Figura \ref{fig:loadings_matrix}).
  
-A estatística clássica trata os parâmetros desconhecidos de um modelo como
-quantidades fixas a serem estimadas a partir dos dados. A inferência bayesiana
-parte de uma premissa diferente: parâmetros desconhecidos são tratados como
-variáveis aleatórias, e o processo de aprendizado estatístico consiste em
-atualizar a distribuição de probabilidade sobre esses parâmetros à medida que
-novos dados são observados. Antes de observar qualquer dado, essa crença inicial
-é representada por uma distribuição \textit{prior} $p(\theta)$, que sintetiza
-o que se sabe — ou se supõe — sobre os parâmetros. Ao observar dados $x$, a
-crença é atualizada por meio do Teorema de Bayes:
+\begin{figure}[h]
+\centering
+% PLACEHOLDER: Figura 4.1 de Paleologo — matriz de loadings particionada em blocos de estilo, país e setor
+\caption{Estrutura típica da matriz de exposições fatoriais $B$ em modelos de características, particionada em blocos de estilo, país e setor \textcite{paleologo2025}.}
+\label{fig:loadings_matrix}
+\end{figure}
  
-\begin{equation}
-    p(\theta \mid x) \propto p(x \mid \theta) \, p(\theta),
-\end{equation}
+Nos modelos estatísticos, os fatores não são definidos a priori: tanto $B$ quanto $f_t$ são extraídos diretamente dos retornos observados por análise de componentes principais ou métodos correlatos. A lógica é que os padrões de co-movimento nos dados revelam as fontes latentes de risco sem que o pesquisador precise especificá-las antecipadamente. O PCA identifica as direções de máxima variância no painel de retornos e as usa como fatores, o que garante que os componentes extraídos explicam a maior parcela possível da variância total com o menor número possível de fatores. A desvantagem é que esses componentes não têm interpretação econômica direta: o primeiro fator estatístico tipicamente se assemelha ao portfólio de mercado, mas os demais são combinações lineares abstratas dos retornos sem correspondência imediata a variáveis observáveis.
  
-em que $p(x \mid \theta)$ é a verossimilhança — a probabilidade de observar os
-dados $x$ dado que os parâmetros assumem o valor $\theta$ — e $p(\theta \mid x)$
-é a distribuição \textit{posterior}, que representa a crença atualizada sobre
-$\theta$ após observar os dados. O \textit{posterior} combina, de forma
-ponderada, a informação prévia e a evidência empírica: quando os dados são
-abundantes e informativos, a verossimilhança domina; quando são escassos, o
-\textit{prior} exerce maior influência.
+A Análise de Componentes Principais Probabilística (PPCA), formalizada por \textcite{tipping1999}, oferece uma versão generativa dessa abordagem ao tratar os fatores como variáveis latentes com distribuição \textit{prior} Gaussiana. Nessa formulação, os retornos observados são realizações de um processo gerado pelos fatores latentes, e o problema de estimação consiste em inferir quais valores dos fatores são consistentes com os dados. Sob hipóteses Gaussianas, esse problema tem solução analítica: pela propriedade de conjugação Normal-Normal, o \textit{posterior} dos fatores dado os retornos observados é também Gaussiano, com média e covariância obtidas em forma fechada sem recorrer a métodos numéricos. Essa tratabilidade analítica é a razão pela qual o PPCA é adotado como modelo de referência neste trabalho. Ele representa o caso mais parcimonioso de um modelo fatorial probabilístico com \textit{posterior} analítico, e a comparação com ele isola precisamente o efeito da complexidade adicional do \textit{NeuralFactors} sobre as métricas de avaliação.
  
-A distinção mais importante entre a inferência bayesiana e a estimação por
-máxima verossimilhança não está na equação em si, mas no objeto que cada
-abordagem produz. A estimação clássica retorna um único valor — o parâmetro
-que maximiza a verossimilhança. A inferência bayesiana retorna uma distribuição
-completa de probabilidade sobre os parâmetros, o \textit{posterior}, que
-descreve não apenas o valor mais provável, mas também o grau de incerteza
-associado a cada possível valor. Em modelagem financeira, essa distinção tem
-consequências práticas diretas: um modelo bayesiano não apenas estima as
-exposições fatoriais de um ativo, mas caracteriza a incerteza associada a essas
-estimativas — informação que afeta diretamente decisões de alocação de risco.
+Nos modelos macroeconômicos, por fim, os fatores são séries observáveis como spreads de crédito, variações na taxa de inflação ou crescimento da produção industrial. As exposições são estimadas por regressão dos retornos individuais sobre essas séries em janelas temporais. Essa abordagem ancora os fatores em variáveis com interpretação econômica clara e permite estudar diretamente a transmissão de choques macroeconômicos ao mercado acionário, mas depende da escolha prévia das variáveis relevantes — e a teoria não oferece critério definitivo para essa seleção.
  
-Na prática, calcular o \textit{posterior} exige integrar a verossimilhança sobre
-todo o espaço dos parâmetros, operação que raramente possui forma analítica
-fechada. Uma exceção importante ocorre quando o \textit{prior} e a verossimilhança
-pertencem a famílias distribucionais compatíveis — os chamados pares
-\textit{conjugados}. Nesses casos, o \textit{posterior} pertence à mesma família
-que o \textit{prior}, e sua forma pode ser escrita diretamente em termos dos
-parâmetros do modelo e dos dados observados, sem recorrer a métodos numéricos.
-O par Normal-Normal é o caso mais relevante para esta tese: quando o
-\textit{prior} sobre um parâmetro é Gaussiano e a verossimilhança também é
-Gaussiana, o \textit{posterior} é Gaussiano, com média e covariância que dependem
-explicitamente das observações e dos parâmetros do modelo. Essa propriedade —
-a conjugação Normal — é a peça central que torna o componente de inferência
-do \textit{NeuralFactors} computacionalmente tratável, como discutido na
-subseção seguinte.
+Apesar das diferenças entre as três abordagens, elas compartilham um conjunto de hipóteses que limitam sua capacidade de representar mercados com dinâmica de risco variável. Essas hipóteses não são falhas de implementação — são consequências estruturais da formulação linear estática, e compreendê-las é necessário para entender o que o \textit{NeuralFactors} se propõe a corrigir.
  
-%------------------------------------------------------------
-\subsection{Modelos Fatoriais Bayesianos e PPCA}
+A primeira limitação é a estacionariedade das exposições. Em qualquer das três abordagens, a matriz $B$ é estimada sobre uma janela histórica de dados e mantida fixa ao longo do período de previsão. A sensibilidade de uma empresa ao câmbio, ao ciclo de commodities ou a um fator de estilo é tratada como constante, como se a estrutura de risco do ativo não variasse com o ambiente macroeconômico. Na prática, essa hipótese não se sustenta: empresas alteram sua estrutura de capital, mudam de segmento de atuação e redefinem sua exposição a fatores externos ao longo do tempo, e o próprio regime macroeconômico determina quais fontes de risco são dominantes em cada período. Um modelo estimado em um período de baixa volatilidade carregará exposições que podem subestimar sistematicamente o risco em períodos de estresse, exatamente quando estimativas precisas são mais necessárias para a gestão de carteiras.
  
-A aplicação do arcabouço bayesiano à análise fatorial parte de uma reformulação
-do papel dos fatores. Nos modelos tradicionais, fatores como o prêmio de mercado
-ou o fator SMB são portfólios observáveis, e a análise consiste em estimar os
-coeficientes que descrevem a sensibilidade de cada ativo a esses fatores. Na
-perspectiva bayesiana, os fatores passam a ser tratados como variáveis latentes
-— existem como componentes do processo que gera os retornos, mas não são
-diretamente observáveis. Nesse caso, a inferência tem um objetivo duplo:
-aprender os parâmetros estruturais do modelo e, simultaneamente, inferir quais
-realizações dos fatores latentes são consistentes com os retornos observados.
-Essa segunda tarefa corresponde exatamente ao cálculo do \textit{posterior}
-dos fatores dado os retornos — um problema de inferência bayesiana sobre
-variáveis latentes.
+A segunda limitação é a linearidade na extração dos fatores. Mesmo os modelos estatísticos, que não impõem estrutura econômica aos fatores, os extraem por métodos lineares como PCA. Isso significa que a estrutura de dependência entre ativos que o modelo captura é necessariamente linear e simétrica: a correlação entre dois ativos é tratada como constante ao longo do tempo, quando na prática as correlações entre ativos tendem a aumentar de forma pronunciada em momentos de crise. Esse fenômeno — correlações que se elevam precisamente quando a diversificação seria mais valiosa — é uma característica conhecida dos mercados financeiros que modelos lineares estáticos são estruturalmente incapazes de capturar. Relações não lineares entre características das empresas e seus retornos, ou padrões de dependência que emergem apenas sob condições extremas, ficam fora do alcance dessa classe de modelos.
  
-\textcite{geweke1996} estabeleceram o arcabouço formal para essa abordagem no
-contexto da \textit{Arbitrage Pricing Theory}. Os autores propuseram um modelo
-em que os fatores sistemáticos são variáveis latentes com distribuição
-\textit{prior}, e os retornos observados são utilizados para derivar o
-\textit{posterior} exato sobre as funções de interesse do modelo fatorial —
-incluindo os próprios fatores e os prêmios de risco associados. \textcite{aguilar2000}
-estenderam essa estrutura para o caso dinâmico, desenvolvendo modelos fatoriais
-com cargas temporalmente variantes e componentes de volatilidade estocástica
-para os fatores latentes. Aplicado a séries temporais financeiras multivariadas,
-o modelo demonstrou que a estrutura de dependência entre ativos pode ser
-capturada de forma mais precisa quando os fatores são inferidos dinamicamente
-a partir dos dados, em vez de fixados exogenamente. A inovação central, nas
-palavras dos próprios autores, é dupla: substituir fatores observáveis por
-fatores latentes e permitir que a estrutura linear seja dinâmica — duas
-características que também definem o \textit{NeuralFactors}.
+A terceira limitação é distribucional. O modelo linear padrão com hipóteses Gaussianas produz uma distribuição conjunta dos retornos com caudas que decaem exponencialmente. Retornos financeiros, no entanto, apresentam caudas empiricamente mais pesadas: eventos que uma distribuição normal atribuiria probabilidade desprezível — quedas de três ou quatro desvios padrões em um único dia — ocorrem com frequência observável nos dados históricos. Para aplicações de gestão de risco como a calibração de \textit{Value at Risk}, essa discrepância tem consequências diretas: um modelo Gaussiano bem ajustado às condições normais de mercado subestimará sistematicamente as probabilidades de perdas extremas, produzindo estimativas de risco que falham precisamente nos cenários de estresse para os quais a modelagem existe.
  
-Sob hipóteses Gaussianas, o problema de inferência dos fatores latentes admite
-solução analítica exata, sem necessidade de métodos numéricos. Esse resultado
-foi formalizado por \textcite{tipping1999} no contexto da Análise de
-Componentes Principais Probabilística (PPCA). O modelo assume que as observações
-são geradas a partir de variáveis latentes por meio de uma transformação linear
-com ruído Gaussiano. Pela propriedade de conjugação Normal estabelecida na
-subseção anterior, a distribuição \textit{posterior} dos fatores latentes dado
-os dados observados é Gaussiana com média e covariância em forma fechada —
-expressões que dependem diretamente das cargas fatoriais e das variâncias
-idiossincráticas do modelo. O PPCA representa, nesse sentido, o caso canônico
-de um modelo fatorial probabilístico analiticamente tratável, e é utilizado
-como modelo de referência no artigo original de \textcite{gopal2024} por
-precisamente essa razão: constitui a fronteira natural de comparação para
-qualquer extensão probabilística da análise fatorial clássica.
- 
-O \textit{NeuralFactors} opera dentro dessa tradição, mas a estende em duas
-direções. As cargas fatoriais deixam de ser parâmetros fixos e passam a ser
-saídas de uma rede neural que incorpora a informação histórica disponível,
-tornando as exposições temporalmente variantes. As distribuições Gaussianas
-são substituídas por distribuições Student-$t$, mais adequadas para acomodar
-as caudas pesadas características dos retornos financeiros. A tratabilidade
-analítica é recuperada por meio de uma aproximação Normal das distribuições
-Student-$t$ — deliberadamente invocando a propriedade de conjugação que garante
-um \textit{posterior} Gaussiano em forma fechada. É esse \textit{posterior}
-que o componente de inferência do modelo calcula a cada período, e cuja
-derivação formal é apresentada na metodologia.
+Essas três limitações não são independentes entre si. Todas refletem uma mesma escolha subjacente: tratar o problema de estimação fatorial como estático, linear e Gaussiano. É precisamente essa escolha que o \textit{NeuralFactors} revisita, e as extensões que ele propõe respondem diretamente a cada uma dessas restrições.
+
+\section{Modelos Fatoriais Probabilísticos}
+
+A seção anterior encerrou com a observação de que os modelos fatoriais lineares clássicos compartilham uma limitação estrutural: os fatores são tratados como quantidades determinísticas, seja porque são definidos a priori (Fama-French, BARRA), seja porque são extraídos por técnicas de redução de dimensionalidade que não modelam incerteza (PCA). Os três problemas identificados (exposições estáticas, linearidade na extração dos fatores e hipótese Gaussiana) têm uma raiz comum nesse tratamento determinístico. Para resolver esse problema, é necessário um arcabouço que permita tratar os fatores como variáveis aleatórias não observadas, definir crenças sobre eles antes de ver os dados, e atualizar essas crenças de maneira coerente à medida que os retornos são observados. Esse arcabouço é a inferência bayesiana.
+
+\subsection{Inferência Bayesiana e Variáveis Latentes}
+
+A inferência bayesiana oferece uma linguagem formal para raciocinar sobre quantidades que não são diretamente observadas. No contexto de modelos fatoriais, os fatores de mercado, entendidos como as forças comuns que movem os retornos das ações de forma correlacionada, são precisamente esse tipo de quantidade. Em um dado dia de negociação, observa-se o vetor de retornos $r \in \mathbb{R}^N$ de $N$ ações, mas não se observa o vetor de fatores $z \in \mathbb{R}^F$ que supostamente gerou esses retornos. O fator $z$ é uma variável latente.
+
+O raciocínio bayesiano sobre variáveis latentes se estrutura em três componentes. O *prior* $p(z)$ codifica a crença sobre os fatores antes de qualquer observação do dia; no caso de modelos fatoriais financeiros, o prior tipicamente expressa que os fatores têm média próxima de zero e dispersão compatível com a escala de retornos diários. A *verossimilhança* $p(r \mid z)$ especifica como os retornos observados se relacionam com os fatores latentes. Em um modelo fatorial linear, essa relação assume a forma $r = \alpha + Bz + \varepsilon$, onde $B$ é a matriz de exposições fatoriais e $\varepsilon$ captura o ruído idiossincrático de cada ação. O *posterior* $p(z \mid r)$ representa a crença atualizada sobre os fatores depois de observar os retornos. O teorema de Bayes conecta os três:
+
+$$p(z \mid r) = \frac{p(r \mid z) \cdot p(z)}{p(r)}$$
+
+onde $p(r) = \int p(r \mid z) \, p(z) \, dz$ é a verossimilhança marginal, obtida integrando sobre todos os valores possíveis dos fatores.
+
+O posterior $p(z \mid r)$ é o objeto central da inferência bayesiana. Ele responde à pergunta: "dado que eu observei esses retornos hoje, qual é a distribuição de probabilidade sobre os fatores que provavelmente os geraram?" A resposta não é um único número, mas uma distribuição completa, que reflete a incerteza residual sobre os fatores mesmo após a observação dos dados. Quando se tem muitas ações informativas ($N$ grande) com exposições fatoriais altas e ruído idiossincrático baixo, o posterior se concentra em torno de um valor, pois há pouca dúvida sobre o que os fatores fizeram. Quando se tem poucas ações ou muito ruído, o posterior permanece disperso, sinalizando que os dados não são suficientes para determinar $z$ com precisão.
+
+A distinção conceitual entre o tratamento determinístico e o bayesiano pode ser resumida da seguinte forma. No PCA clássico, a estimação dos fatores produz um ponto no espaço $\mathbb{R}^F$, a melhor estimativa de $z$, e descarta a informação sobre quão confiável essa estimativa é. Na abordagem bayesiana, a estimação produz uma distribuição sobre $\mathbb{R}^F$, preservando a incerteza. Essa incerteza é propagada para todas as quantidades derivadas: a covariância estimada entre os retornos, as previsões de risco, os portfólios ótimos. Por essa razão, modelos probabilísticos tendem a produzir estimativas de risco mais bem calibradas do que seus análogos determinísticos, já que a calibração depende diretamente de quantificar corretamente a incerteza, e não apenas de acertar a média.
+
+Um resultado técnico que viabiliza a aplicação prática desse arcabouço a modelos fatoriais é a propriedade de *conjugação* da distribuição Gaussiana. Quando tanto o prior $p(z)$ quanto a verossimilhança $p(r \mid z)$ são Gaussianos, o posterior $p(z \mid r)$ também é Gaussiano e possui fórmula fechada, ou seja, a média e a covariância do posterior podem ser calculadas diretamente por operações matriciais, sem necessidade de aproximações numéricas ou algoritmos iterativos. Esse resultado é a base da regressão linear bayesiana e é o que permite que modelos fatoriais probabilísticos sejam computacionalmente tratáveis mesmo para centenas de ações.
+
+A verossimilhança marginal $p(r)$ também desempenha um papel central nesse arcabouço. Essa quantidade mede a probabilidade dos retornos observados sob o modelo como um todo, integrando sobre todos os cenários possíveis de fatores ponderados por suas probabilidades a priori. Maximizar $p(r)$, ou equivalentemente minimizar a log-verossimilhança negativa, é o critério de treinamento natural para modelos generativos latentes. Em modelos lineares-Gaussianos, essa integral tem solução analítica. Em modelos mais complexos, onde a integral se torna intratável, a inferência variacional oferece uma alternativa: constrói-se um limite inferior, o \textit{Evidence Lower Bound} (ELBO), e otimiza-se esse limite. Essa ideia é o fundamento dos \textit{variational autoencoders} (VAEs), que serão discutidos na seção 2.2.3.
+
+
+\subsection{Probabilistic PCA - Modelo Fatorial Generativo}
+
+O PPCA (\textit{Probabilistic Principal Component Analysis}), proposto por Tipping e Bishop (1999) e por Roweis (1997) de forma independente, é a aplicação canônica do arcabouço bayesiano a modelos fatoriais. Ele reformula o PCA clássico, uma técnica de redução de dimensionalidade puramente algébrica, como um modelo generativo probabilístico com variáveis latentes.
+
+O modelo generativo do PPCA assume que cada observação $x_i \in \mathbb{R}^d$ é gerada pelo seguinte processo:
+
+$$z_i \sim \mathcal{N}(0, I_p)$$
+$$x_i = \Lambda z_i + \mu + \varepsilon_i, \quad \varepsilon_i \sim \mathcal{N}(0, \sigma^2 I_d)$$
+
+onde $z_i \in \mathbb{R}^p$ é o vetor de fatores latentes, $\Lambda \in \mathbb{R}^{d \times p}$ é a matriz de projeção (equivalente à matriz de exposições fatoriais $B$ na terminologia de modelos de precificação), $\mu$ é a média dos dados, e $\sigma^2$ é a variância do ruído, assumida igual em todas as dimensões (hipótese de ruído isotrópico).
+
+Traduzindo para a linguagem de modelos fatoriais de equities: $x_i$ é o vetor de retornos de $d$ ações em um dado dia, $z_i$ é o vetor de $p$ fatores latentes que dirigem os co-movimentos entre as ações, $\Lambda$ é a matriz que mapeia fatores em retornos (as exposições fatoriais), e $\sigma^2$ captura a parte do retorno de cada ação que não é explicada pelos fatores comuns.
+
+A distribuição marginal dos dados sob o PPCA é Gaussiana:
+
+$$p(x_i) = \mathcal{N}(\mu, \Lambda\Lambda^\top + \sigma^2 I)$$
+
+e a covariância implícita pelo modelo decompõe-se em dois termos: $\Lambda\Lambda^\top$, que captura a estrutura de correlação induzida pelos fatores comuns, e $\sigma^2 I$, que captura o ruído idiossincrático. Essa decomposição é formalmente idêntica à dos modelos fatoriais clássicos discutidos na seção 2.1; a diferença está no enquadramento probabilístico, que permite derivar tanto a distribuição dos dados quanto o posterior sobre os fatores.
+
+O posterior sobre $z_i$ dado $x_i$ tem solução analítica, pela conjugação Normal-Normal:
+
+$$p(z_i \mid x_i) = \mathcal{N}\left(\Lambda^\top(\Lambda\Lambda^\top + \sigma^2 I)^{-1}(x_i - \mu),\ I - \Lambda^\top(\Lambda\Lambda^\top + \sigma^2 I)^{-1}\Lambda\right)$$
+
+Essa expressão tem a mesma estrutura da atualização bayesiana descrita na seção anterior: a média do posterior é uma combinação ponderada entre o prior (que puxa $z$ para zero) e a evidência dos dados (que puxa $z$ na direção que melhor explica os retornos observados), e a covariância do posterior é sempre menor que a do prior, refletindo a redução de incerteza proporcionada pela observação.
+
+Os parâmetros $\Lambda$ e $\sigma^2$ podem ser estimados por máxima verossimilhança, e o PPCA possui uma propriedade notável: a solução de máxima verossimilhança para $\Lambda$ é diretamente relacionada aos autovetores da matriz de covariância amostral dos dados. Especificamente, as colunas de $\Lambda$ são os $p$ autovetores principais escalados pelas raízes dos autovalores correspondentes menos $\sigma^2$. Isso estabelece uma correspondência formal entre PCA (que extrai os autovetores dominantes) e PPCA (que os reinterpreta como parâmetros de um modelo generativo). Quando o ruído $\sigma^2$ tende a zero, o PPCA colapsa para o PCA determinístico: os fatores se tornam determinísticos e a incerteza desaparece.
+
+Como modelo fatorial aplicado a ações, o PPCA resolve o problema central identificado nos modelos clássicos: os fatores passam a ser variáveis aleatórias com distribuição de probabilidade, e todo o aparato bayesiano (posterior, verossimilhança marginal, propagação de incerteza) fica disponível. O artigo NeuralFactors (Gopal, 2024) utiliza o PPCA como \textit{benchmark} comparativo, e reporta que embora o PPCA tenha desempenho inferior ao NeuralFactors em log-verossimilhança, ele produz estimativas de covariância e portfólios competitivos, justamente porque a estrutura probabilística garante coerência na quantificação de risco.
+
+Entretanto, o PPCA herda limitações relevantes para a modelagem de retornos de ações. As exposições fatoriais $\Lambda$ são estimadas como parâmetros fixos, que não variam ao longo do tempo. Uma ação que muda de setor, que passa por uma reestruturação, ou cujo perfil de risco se altera com as condições macroeconômicas terá a mesma exposição fatorial durante todo o período de estimação. Além disso, os fatores latentes são extraídos exclusivamente a partir dos retornos passados. Informações fundamentalistas (múltiplos de \textit{valuation}, indicadores contábeis), indicadores de mercado (volatilidade implícita, \textit{spreads} de crédito) e classificações setoriais não entram na estimação, de modo que o modelo não tem como condicionar os parâmetros em fontes de informação externas aos retornos. Por fim, tanto o prior sobre $z$ quanto a verossimilhança são Gaussianos, o que implica que os retornos modelados seguem uma distribuição Gaussiana multivariada. Retornos de ações apresentam caudas pesadas, assimetria e agrupamento de volatilidade, fenômenos que a distribuição Gaussiana não captura adequadamente e que afetam diretamente a calibração de métricas de risco extremo como o \textit{Value at Risk}.
+
+
+\subsection{NeuralFactors: Extensão Neural do Modelo Fatorial Probabilístico}
+
+O NeuralFactors (Gopal, 2024) parte da estrutura fatorial probabilística do PPCA e a estende em três direções, cada uma voltada a uma das limitações remanescentes identificadas na seção anterior.
+
+A extensão mais visível é tornar as exposições fatoriais variantes no tempo e condicionais em informação externa. No PPCA, a matriz $\Lambda$ é fixa; no NeuralFactors, os parâmetros por ativo (o intercepto $\alpha_{i,t}$, o vetor de exposições $\beta_{i,t}$, a escala idiossincrática $\sigma_{i,t}$ e os graus de liberdade $\nu_{i,t}$) são todos \textit{outputs} de uma rede neural chamada \textit{Stock Embedder}. Essa rede recebe como \textit{input} uma janela de $L=256$ dias úteis de \textit{features} temporais (retornos passados, indicadores fundamentalistas, índices de mercado) e \textit{features} estáticas (classificação setorial), e produz os quatro parâmetros para cada ação em cada data. Como consequência, as exposições fatoriais de uma ação se ajustam ao longo do tempo em resposta a mudanças nos seus fundamentos e no ambiente de mercado, sem que o analista precise redefinir manualmente os fatores ou reestimar o modelo periodicamente.
+
+A arquitetura do Stock Embedder combina uma projeção linear por timestep, um Transformer Encoder de duas camadas que processa a sequência temporal, uma concatenação com as features estáticas, e um MLP de duas camadas que culmina em quatro cabeças lineares independentes para cada parâmetro. A escolha do Transformer como modelo de sequência reflete sua capacidade de capturar dependências de longo prazo na janela de lookback sem os problemas de gradiente que afetam LSTMs em sequências longas; o artigo demonstra empiricamente que a atenção supera o LSTM nessa aplicação.
+
+O modelo também substitui a distribuição Gaussiana pela distribuição Student-T. No modelo generativo do NeuralFactors, o retorno de cada ação dado os fatores segue:
+
+$$r_{i,t+1} \sim t_{\nu_{i,t}}(\alpha_{i,t} + \beta_{i,t}^\top z_{t+1},\ \sigma_{i,t})$$
+
+onde $t_\nu$ denota a distribuição Student-T com $\nu$ graus de liberdade. A Student-T acomoda caudas mais pesadas que a Gaussiana: quando $\nu$ é pequeno, eventos extremos recebem probabilidade substancialmente maior do que sob a normal. Os graus de liberdade $\nu_{i,t}$ são aprendidos por ação e por data, o que permite ao modelo calibrar a frequência de eventos extremos de forma granular. Da mesma forma, o prior sobre os fatores latentes também é Student-T:
+
+$$z_{t+1} \sim t_{\nu_z}(\mu_z, \sigma_z)$$
+
+com parâmetros $\mu_z$, $\sigma_z$ e $\nu_z$ aprendidos durante o treinamento. Essa escolha distribucional tem consequências diretas para a calibração de métricas de risco: a distribuição Student-T permite que os quantis extremos, ou seja, os percentis que definem o \textit{Value at Risk}, sejam mais conservadores do que os previstos por um modelo Gaussiano, refletindo a frequência real de perdas extremas em mercados de ações.
+
+Por fim, a introdução da Student-T torna a integral da verossimilhança marginal $p(r) = \int p(r \mid z) p(z) dz$ intratável, pois o produto de uma verossimilhança Student-T com um prior Student-T não possui posterior em forma fechada. O NeuralFactors contorna essa dificuldade combinando duas técnicas. Primeiro, aplica \textit{moment matching} para aproximar a Student-T do prior por uma Gaussiana com mesmos dois primeiros momentos, o que permite calcular o posterior $q(z \mid r)$ em forma fechada via regressão linear bayesiana, da mesma forma que no PPCA. Segundo, para compensar o erro de aproximação introduzido pelo *moment matching*, utiliza o \textit{Importance Weighted Autoencoder} (IWAE) como objetivo de treinamento em vez do ELBO padrão. O IWAE, proposto por Burda et al. (2016), gera $K$ amostras do posterior aproximado e pondera cada uma por sua razão de importância $p(r \mid z^{(k)}) p(z^{(k)}) / q(z^{(k)} \mid r)$, resultando em um estimador com menor viés que o ELBO. O artigo utiliza $K=20$ amostras e a versão condicional da \textit{loss}, o CIWAE (\textit{Conditional IWAE}), que condiciona toda a computação na informação histórica $\mathcal{F}_t$.
+
+A arquitetura resultante pode ser interpretada como uma cadeia de três blocos funcionais. O Stock Embedder transforma \textit{features} em parâmetros do modelo fatorial por ativo. O encoder combina esses parâmetros com os retornos observados para computar o posterior sobre os fatores via regressão linear bayesiana, uma operação puramente algébrica sem pesos neurais próprios. O decoder avalia a verossimilhança dos retornos observados dado cada amostra dos fatores. A \textit{loss} CIWAE combina as contribuições dos três blocos e seus gradientes fluem de volta ao \textit{Stock Embedder} (que concentra todos os parâmetros treináveis da rede) e aos parâmetros do prior.
+
+Uma propriedade relevante para aplicações práticas é que a média e a covariância dos retornos sob o modelo podem ser calculadas em forma fechada, sem amostragem:
+
+$$\mathbb{E}[r] = \alpha + B^\top \mu_z, \quad \text{Cov}(r) = \Sigma_x + B^\top \Sigma_z B$$
+
+onde $\Sigma_x = \text{diag}(\sigma_1^2, \ldots, \sigma_N^2)$ é a covariância idiossincrática e $B$ é a matriz de exposições. Essa propriedade permite que o modelo seja utilizado diretamente para otimização de portfólios de mínima variância e para estimação de risco, sem a necessidade de simulação de Monte Carlo para obter a covariância. Trata-se de uma vantagem computacional sobre modelos generativos puramente neurais que não possuem estrutura fatorial.
+
+O NeuralFactors herda portanto a interpretabilidade dos modelos fatoriais clássicos (decomposição de retornos em componentes sistemáticos e idiossincráticos, exposições fatoriais por ativo) e a coerência probabilística do PPCA (posterior sobre fatores, propagação de incerteza, treinamento por máxima verossimilhança), ao mesmo tempo em que relaxa as restrições de exposições estáticas, features limitadas a retornos, e distribuição Gaussiana que limitavam esses modelos predecessores.
