@@ -1,0 +1,60 @@
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+node distance=2.2cm,
+block/.style={
+rectangle,
+rounded corners,
+draw,
+thick,
+minimum width=3.4cm,
+minimum height=1.1cm,
+align=center,
+font=\footnotesize
+},
+seq/.style={block, fill=blue!20},
+mlp/.style={block, fill=blue!30},
+arrow/.style={->, thick}
+]
+
+% Main blocks
+\node[seq] (seq) {
+\textbf{Sequence Model}\\
+(LSTM / Attention)
+};
+
+\node[mlp, right=3cm of seq] (mlp) {
+\textbf{MLP}\\
+Fully Connected
+};
+
+\node[block, right=3cm of mlp] (out) {
+\textbf{Output}\\
+$\alpha_{i,t},\beta_{i,t},\sigma_{i,t},\nu_{i,t}$
+};
+
+% Time series inputs
+\node[below=1.3cm of seq] (ts1) {$r_{i,t-l}\,||\,X^{ts}_{i,t-l}$};
+\node[right=0.9cm of ts1] (dots) {$\cdots$};
+\node[right=0.9cm of dots] (ts2) {$r_{i,t}\,||\,X^{ts}_{i,t}$};
+
+% Static features
+\node[below=1.3cm of mlp] (static) {$X^{static}_{t}$};
+
+% Arrows inputs → sequence
+\draw[arrow] (ts1) -- (seq);
+\draw[arrow] (ts2) -- (seq);
+
+% Sequence → MLP
+\draw[arrow] (seq) -- node[above] {$h_{2,i,t}$} (mlp);
+
+% Static → MLP
+\draw[arrow] (static) -- (mlp);
+
+% MLP → outputs
+\draw[arrow] (mlp) -- (out);
+
+\end{tikzpicture}
+
+\caption{Representação visual do \textit{Stock Embedder}.}
+\end{figure}

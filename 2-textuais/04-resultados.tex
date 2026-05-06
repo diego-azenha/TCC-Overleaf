@@ -1,0 +1,214 @@
+\chapter{Resultados}
+
+Avaliar um modelo generativo exige uma abordagem distinta da utilizada 
+em modelos preditivos convencionais. Um modelo de regressão pode ser 
+julgado pelo erro de previsão pontual — a distância entre o valor 
+previsto e o observado. Um modelo que aprende uma distribuição de 
+probabilidade completa precisa ser avaliado em múltiplas dimensões 
+simultaneamente, pois uma distribuição pode estar corretamente 
+especificada em média e ainda assim falhar nas correlações entre ativos, 
+nas caudas ou na calibração de eventos extremos. Nenhuma métrica isolada 
+captura todas essas propriedades, o que justifica a estrutura de 
+avaliação adotada neste capítulo.
+
+A avaliação é organizada em torno de quatro dimensões complementares, 
+seguindo a estrutura proposta por \textcite{gopal2024}. A 
+\textit{negative log-likelihood} mede o ajuste agregado da distribuição 
+conjunta estimada aos retornos observados — quanto maior a probabilidade 
+atribuída pelo modelo aos dados reais, melhor o ajuste global. A 
+previsão de covariância examina uma propriedade distinta e não 
+necessariamente capturada pela NLL: a precisão da estrutura de 
+dependência entre ativos, que o modelo fatorial produz diretamente em 
+forma fechada a partir das exposições e da covariância dos fatores 
+latentes. A calibração do \textit{Value at Risk} testa o comportamento 
+das caudas da distribuição estimada, verificando se as probabilidades 
+de perdas extremas atribuídas pelo modelo correspondem às frequências 
+empiricamente observadas — propriedade que modelos financeiros 
+frequentemente violam mesmo quando apresentam bom ajuste global. Por 
+fim, o backtest de portfólio traduz o desempenho estatístico em valor 
+econômico, avaliando se as melhorias na modelagem da distribuição se 
+refletem em ganhos concretos na alocação de risco.
+
+Em cada dimensão, o \textit{NeuralFactors} é comparado ao PPCA — o 
+modelo fatorial probabilístico canônico sob hipóteses Gaussianas, 
+introduzido na revisão da literatura. Para fins de comparação, o PPCA 
+é estimado por máxima verossimilhança sobre uma janela móvel de retornos 
+históricos, produzindo uma matriz de covariância da forma 
+$\Sigma = \Sigma_x + BB^{\top}$ com cargas e variâncias idiossincráticas 
+fixas ao longo do período de previsão. O PPCA serve como linha de base 
+por ser o caso mais parcimonioso e bem estabelecido da família de 
+modelos fatoriais probabilísticos com posterior analítico: suas 
+hipóteses Gaussianas garantem tratabilidade matemática, mas limitam a 
+capacidade de capturar caudas pesadas e dependências dinâmicas. Qualquer 
+ganho do \textit{NeuralFactors} sobre esse benchmark é evidência de que 
+a complexidade adicional — exposições fatoriais dinâmicas, distribuições 
+Student-$t$ e inferência variacional — produz valor mensurável nas 
+dimensões avaliadas. Os resultados são apresentados separadamente para 
+os conjuntos de validação e teste, permitindo avaliar a estabilidade do 
+desempenho fora da amostra.
+
+%##################################
+
+\section{Negative Log-Likelihood}
+
+A principal métrica utilizada para avaliar o desempenho probabilístico do modelo é a \textit{negative log-likelihood} (NLL). Como o \textit{NeuralFactors} é formulado como um modelo generativo que aprende a distribuição condicional
+
+\[
+p(r_{t+1} \mid \mathcal{F}_t),
+\]
+
+a forma mais direta de avaliar sua qualidade consiste em verificar a probabilidade que ele atribui aos retornos efetivamente observados fora da amostra. Em outras palavras, o modelo é considerado superior quanto maior for a log-verossimilhança associada aos dados reais.
+
+Para cada período $t$, define-se a log-verossimilhança condicional como
+
+\[
+\log p(r_{t+1} \mid \mathcal{F}_t),
+\]
+
+onde a integral sobre os fatores latentes é aproximada por meio do limite CIWAE com múltiplas amostras, conforme descrito na seção de treinamento. A métrica reportada é a versão negativa dessa quantidade,
+
+\[
+\text{NLL}_t = - \log p(r_{t+1} \mid \mathcal{F}_t),
+\]
+
+de modo que valores menores indicam melhor ajuste probabilístico.
+
+Seguindo \textcite{gopal2024}, distinguem-se duas versões da métrica. A primeira é a NLL conjunta,
+
+\begin{equation}
+\text{NLL}_{\text{ind},t}
+=
+-\sum_{i=1}^{N_t}
+\frac{1}{N_t}
+\log p(r_{i,t+1} \mid \mathcal{F}_t),
+\end{equation}
+
+que corresponde à média da log-verossimilhança da distribuição condicional conjunta dos retornos no período $t$. Essa métrica avalia diretamente a capacidade do modelo de capturar a estrutura multivariada dos dados, incluindo correlações e dependências cruzadas entre ativos.
+
+A segunda é a NLL individual,
+
+\begin{equation}
+\text{NLL}_{\text{ind},t}
+=
+\sum_{i=1}^{N_t}
+\frac{1}{N_t}
+\log p(r_{i,t+1} \mid \mathcal{F}_t),
+\end{equation}
+
+que corresponde à média das log-verossimilhanças marginais por ativo. Enquanto a NLL$_{\text{joint}}$ examina a qualidade da modelagem conjunta, a NLL$_{\text{ind}}$ avalia o ajuste das distribuições univariadas.
+
+A distinção entre as duas métricas é relevante porque um modelo pode ajustar adequadamente as distribuições marginais e ainda assim falhar em capturar a estrutura de dependência entre ativos. A NLL conjunta é, portanto, a medida mais exigente e aquela que melhor reflete o desempenho do modelo como representação da distribuição multivariada completa.
+
+No artigo original, a NLL$_{\text{joint}}$ e a NLL$_{\text{ind}}$ são calculadas utilizando amostragem do posterior e do prior com diferentes números de simulações, assegurando aproximações precisas das integrais envolvidas. A mesma metodologia é adotada neste trabalho para garantir comparabilidade entre resultados.
+
+\input{figuras/table_nll}
+
+{\color{red}Os resultados apresentados na Tabela \ref{tab:nll} refletem o estado atual da base de dados preliminar e não devem ser interpretados como indicativos 
+do desempenho real dos modelos. A diferença de escala entre o 
+\textit{NeuralFactors} e o PPCA, com NLL$_{\text{joint}}$ médias de 11.614 
+e 68 respectivamente, e a discrepância no número de datas avaliadas indicam 
+inconsistências no pipeline de dados que comprometem qualquer comparação 
+direta entre os modelos nesta versão. Uma discussão substantiva dos resultados 
+será conduzida na versão final do trabalho, após a correção da base de dados.}
+
+%##################################
+
+\section{Previsão de Covariância}
+
+Uma das principais vantagens do \textit{NeuralFactors} é a possibilidade de obter a matriz de covariância prevista em forma fechada, decorrente da estrutura fatorial do modelo. A partir da especificação do \textit{Decoder}, a covariância condicional dos retornos pode ser escrita como
+
+\[
+\Sigma_{t+1}
+=
+\Sigma_x
++
+B_t \Sigma_z B_t^{\top},
+\]
+
+em que $\Sigma_x$ representa a matriz diagonal das variâncias idiossincráticas e $B_t \Sigma_z B_t^{\top}$ corresponde ao componente sistemático associado aos fatores latentes. Essa decomposição reproduz a estrutura clássica dos modelos fatoriais, na qual o risco total é a soma de um termo específico e de um termo comum de baixa dimensão.
+
+Para avaliar a qualidade da previsão de covariância, seguimos o procedimento adotado por \textcite{gopal2024}. Considera-se o subconjunto de ativos que permanecem continuamente na amostra ao longo do período analisado, garantindo comparabilidade entre datas. Utilizando as previsões de média e covariância, os retornos observados no período seguinte são transformados em retornos \textit{whitened},
+
+\[
+\tilde{r}_{t+1}
+=
+\Sigma_{t+1}^{-1/2}
+\left(
+r_{t+1} - \mathbb{E}[r_{t+1}]
+\right),
+\]
+
+de modo que, sob especificação correta, a matriz de covariância de $\tilde{r}_{t+1}$ deve aproximar uma matriz identidade.
+
+A qualidade da previsão é então medida por duas estatísticas. A primeira é o erro quadrático médio (MSE) entre a matriz de covariância estimada dos retornos \textit{whitened} e a identidade. A segunda é a estatística de Box’s M, que avalia formalmente a equivalência entre matrizes de covariância. Essas duas métricas capturam, respectivamente, a magnitude média do erro e a consistência estrutural da matriz prevista.
+
+\input{figuras/table_covariance}
+
+{\color{red}Os resultados apresentados na Tabela \ref{tab:cov} refletem o estado atual da base de dados preliminar e não devem ser interpretados como indicativos 
+do desempenho real dos modelos. Embora a direção dos resultados seja 
+favorável ao \textit{NeuralFactors} — com MSE médio de 0,000003 contra 
+0,000041 do PPCA —, a discrepância no número de datas avaliadas entre os 
+dois modelos impede qualquer comparação direta nesta versão. Uma discussão 
+substantiva dos resultados será conduzida na versão final do trabalho, após 
+a correção da base de dados.}
+
+%##################################
+
+\section{Análise de Risco (VaR e Calibração)}
+
+Uma das principais vantagens de modelos generativos é a possibilidade de extrair medidas completas de risco a partir da distribuição estimada. Diferentemente de modelos que produzem apenas previsões pontuais, o \textit{NeuralFactors} permite calcular probabilidades associadas a eventos extremos, como perdas acima de determinado nível. Nesse contexto, avalia-se a qualidade da modelagem das caudas da distribuição por meio de análise de \textit{Value at Risk} (VaR).
+
+Para cada período $t$, simula-se um conjunto de retornos a partir da distribuição condicional estimada $p(r_{t+1} \mid \mathcal{F}_t)$. O VaR ao nível $\alpha$ corresponde ao quantil $\alpha$ dessa distribuição simulada. Sob especificação correta, a proporção de observações reais que excedem o VaR$_\alpha$ deve ser aproximadamente igual a $\alpha$.
+
+A qualidade dessa correspondência é medida por meio do erro de calibração, conforme proposto por \textcite{kuleshov2018}. Seja $F_t$ a função de distribuição acumulada prevista pelo modelo e $\hat{p}_\alpha$ a fração empírica de observações para as quais $F_t(r_{t+1}) < \alpha$. O erro de calibração é definido como
+
+\[
+\text{cal} = \sum_{\alpha}
+\left(
+\hat{p}_\alpha - \alpha
+\right)^2,
+\]
+
+onde a soma é realizada sobre um conjunto de quantis igualmente espaçados. Neste trabalho, utilizam-se 100 quantis, o que permite avaliar a aderência da distribuição estimada ao longo de toda a cauda.
+
+Reportam-se duas medidas de calibração. A primeira, denominada \textbf{Uni.}, corresponde ao erro médio por ativo, ponderado pelo número de observações disponíveis. A segunda, \textbf{Port.}, calcula o erro de calibração para um portfólio igualmente ponderado composto pelos ativos da amostra. Essa distinção permite avaliar separadamente a qualidade da modelagem univariada e o comportamento agregado da distribuição.
+
+\input{figuras/table_var}
+
+{\color{red}Os resultados apresentados na Tabela \ref{tab:var} refletem o estado atual da base de dados preliminar e não devem ser interpretados como indicativos 
+do desempenho real dos modelos. Os erros de calibração do \textit{NeuralFactors} — entre 0,35 e 0,42 para todos os quantis avaliados — são manifestamente inconsistentes com o comportamento esperado do modelo: um modelo bem calibrado deveria apresentar erros próximos de zero, o que indica que as probabilidades empíricas deveriam convergir para os níveis nominais dos quantis. Os valores observados sugerem falha sistemática no pipeline de dados, e não propriedade intrínseca do modelo. Uma discussão substantiva dos resultados será conduzida na versão final do trabalho, após 
+a correção da base de dados.}
+
+
+%#################################
+
+\section{Backtest e Otimização de Portfólio}
+
+A utilidade econômica da matriz de covariância estimada é avaliada por meio de estratégias de otimização de portfólio. Como a estrutura do modelo fornece previsões explícitas para a média e a covariância condicional dos retornos, torna-se natural utilizar essas estimativas como insumo para problemas clássicos de alocação de risco.
+
+Adota-se uma formulação de otimização média-variância, na qual os pesos $w$ são escolhidos para maximizar a utilidade quadrática esperada,
+
+\[
+\max_{w \in \mathbb{R}^N}
+\quad
+\mathbb{E}[r_{t+1}]^{\top} w
+-
+\frac{\lambda}{2}
+w^{\top} \Sigma_{t+1} w
+\quad
+\text{s.a.} \quad \|w\|_1 \leq L,
+\]
+
+Seguindo \textcite{gopal2024}, consideram-se quatro configurações: long-only com $L=\infty$, long-only com $L=1$, long-short com $L=\infty$ e long-short com $L=1$. Essa distinção permite avaliar o impacto da restrição de alavancagem e da possibilidade de posições vendidas sobre o desempenho da estratégia.
+
+\input{figuras/table_backtest}
+
+{\color{red}Os resultados apresentados na Tabela \ref{tab:sharpe} refletem o estado atual 
+da base de dados preliminar e não devem ser interpretados como indicativos 
+do desempenho real dos modelos. A volatilidade anualizada do 
+\textit{NeuralFactors} de 33,6\% — mais que o dobro da observada no PPCA — 
+é o indicador mais claro de que os retornos simulados pelo modelo estão sendo 
+contaminados por ruído proveniente do pipeline de dados, inflando artificialmente 
+o risco da carteira e comprimindo o Sharpe ratio para um valor próximo de zero. 
+Uma discussão substantiva dos resultados será conduzida na versão final do 
+trabalho, após a correção da base de dados.}
