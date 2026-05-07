@@ -1,0 +1,37 @@
+\chapter{Características Técnicas}
+\label{ap:caracteristicas}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Detalhamento das vinte características técnicas utilizadas como entrada do modelo.}
+    \label{tab:caracteristicas-detalhado}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{llcp{6cm}}
+        \toprule
+        \textbf{Nome} & \textbf{Categoria} & \textbf{Janela} & \textbf{Definição / Justificativa} \\
+        \midrule
+        Ret1   & Retorno       & 1d  & $\ln(P_t / P_{t-1})$; sinal de reversão de curto prazo \\
+        Ret2   & Retorno       & 2d  & $\ln(P_t / P_{t-2})$; horizonte intermediário \\
+        Ret5   & Retorno       & 5d  & $\ln(P_t / P_{t-5})$; sinal semanal \\
+        Ret10  & Retorno       & 10d & $\ln(P_t / P_{t-10})$; quinzenal \\
+        Ret20  & Retorno       & 20d & $\ln(P_t / P_{t-20})$; fator de momentum mensal \\
+        Vol5   & Volatilidade  & 5d  & Desvio-padrão dos retornos diários nos últimos 5 dias \\
+        Vol10  & Volatilidade  & 10d & Desvio-padrão dos retornos diários nos últimos 10 dias \\
+        Vol20  & Volatilidade  & 20d & Desvio-padrão dos retornos diários nos últimos 20 dias \\
+        VolRatio & Volatilidade & 5/20d & Vol5 / Vol20; mudança recente de volatilidade \\
+        Turnover5  & Volume    & 5d  & Volume médio / capitalização de mercado; últimos 5 dias \\
+        Turnover10 & Volume    & 10d & Volume médio / capitalização de mercado; últimos 10 dias \\
+        VWAPDev    & Volume    & 5d  & $(P_t - \text{VWAP}_{5d}) / \text{VWAP}_{5d}$; desvio do preço médio ponderado \\
+        RSI        & Ind. téc. & 14d & Índice de força relativa; $100 - 100/(1 + U/D)$ \\
+        MADev5     & Ind. téc. & 5d  & $(P_t - \text{MA}_{5d}) / \text{MA}_{5d}$; desvio da média móvel curta \\
+        MADev20    & Ind. téc. & 20d & $(P_t - \text{MA}_{20d}) / \text{MA}_{20d}$; desvio da média móvel longa \\
+        Skew20     & Mom. sup. & 20d & Assimetria amostral dos retornos diários nos últimos 20 dias \\
+        Kurt20     & Mom. sup. & 20d & Curtose amostral dos retornos diários nos últimos 20 dias \\
+        Amihud20   & Iliquidez & 20d & $\frac{1}{20}\sum_{s=t-19}^{t} |r_s| / \text{Vol}_s$; medida de Amihud \\
+        \bottomrule
+    \end{tabular}}
+    \fonte{Elaboração própria.}
+\end{table}
+
+% PLACEHOLDER: adicionar as últimas 2 características da lista final (ajustar conforme
+% o dataset consolidado; a tabela acima lista 18 das 20 previstas).

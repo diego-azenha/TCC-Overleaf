@@ -1,419 +1,187 @@
 \chapter{Metodologia}
+\label{cap:metodologia}
+
+Este capítulo transita da estrutura conceitual apresentada na revisão para a especificação operacional do modelo, com ênfase no que precisa ser definido para que o trabalho seja replicável. A descrição cobre a formulação matemática do problema, a arquitetura do \textit{FactorVAE} em seus quatro blocos, o procedimento de treinamento, os dados utilizados, os modelos de comparação e os procedimentos de avaliação.
 
 \section{Formulação do Problema}
+\label{sec:formulacao}
 
-O objetivo do modelo é aprender a distribuição conjunta dos retornos no período seguinte, condicionada ao conjunto de informações disponíveis no presente:
+O modelo busca a distribuição condicional dos retornos cross-sectionais no período $t{+}1$ dado o conjunto de informações disponível até o final do período $t$. A entrada do modelo é um tensor de características históricas $x_t \in \mathbb{R}^{N_t \times T \times C}$, em que $N_t$ é o número de ativos disponíveis na data $t$ (variável ao longo do tempo, aproximadamente 300--500 no período de teste), $T = 20$ é o comprimento da janela temporal em dias úteis e $C = 20$ é o número de características por ativo por período. A saída é uma distribuição preditiva sobre o vetor de retornos $r_{t+1} \in \mathbb{R}^{N_t}$.
 
-\begin{equation}
-    p(r_{t+1} \mid \mathcal{F}_t),
-\end{equation}
-
-onde $r_{t+1} \in \mathbb{R}^{N_{t+1}}$ representa o vetor de retornos das $N_{t+1}$ ações existentes no período $t+1$, e $\mathcal{F}_t$ denota o conjunto de informações observáveis até o instante $t$ --- séries históricas de retornos, variáveis contábeis, indicadores macroeconômicos e demais características utilizadas como entradas do modelo.
-
-O processo generativo assumido pelo modelo descreve como os retornos seriam produzidos se fosse possível observar os fatores latentes. Primeiro, sorteia-se um vetor de fatores para o período seguinte:
+A decomposição fatorial que o modelo preserva é:
 
 \begin{equation}
-    z_{t+1} \sim t_{\nu_z}(\mu_z, \Sigma_z),
+    r_{t+1} = \alpha(x_t) + \beta(x_t)\, z_{t+1} + \varepsilon_{t+1}
+    \label{eq:decomp-operacional}
 \end{equation}
 
-em que $z_{t+1} \in \mathbb{R}^{F}$ representa os fatores sistemáticos de mercado, $F$ denota o número de fatores e $\Sigma_z \in \mathbb{R}^{F \times F}$ é a matriz de covariância do \textit{prior}. A escolha da distribuição Student-$t$ permite acomodar caudas mais pesadas do que a hipótese Gaussiana, característica recorrente em retornos financeiros. Em seguida, condicionalmente aos fatores latentes, cada retorno individual é gerado segundo
-
-\begin{equation}
-    r_{i,t+1} \sim p(r_{i,t+1} \mid z_{t+1}, \mathcal{F}_t), \quad i = 1, \dots, N_{t+1}.
-\end{equation}
-
-A dependência entre ativos surge exclusivamente por meio do vetor comum $z_{t+1}$: dado o componente sistemático, os retornos tornam-se condicionalmente independentes. As próximas seções detalham como o modelo especifica essa distribuição condicional --- como a informação observável $\mathcal{F}_t$ é transformada em parâmetros que descrevem a distribuição de cada retorno, e como os fatores latentes $z_{t+1}$ são tratados durante o treinamento e a inferência.
-
+\noindent em que $\alpha(x_t) \in \mathbb{R}^{N_t}$ é o vetor de componentes idiossincráticos esperados, $\beta(x_t) \in \mathbb{R}^{N_t \times K}$ é a matriz de exposições, $z_{t+1} \in \mathbb{R}^K$ é o vetor de fatores latentes e $\varepsilon_{t+1}$ é o resíduo idiossincrático. Todas as três quantidades são funções aprendidas de $x_t$. Os parâmetros de dimensão adotados são: $K = 16$ fatores latentes, $M = 64$ portfólios construídos internamente pelo codificador, e dimensão oculta $H$ a ser especificada na Tabela~\ref{tab:hiperparametros}. As escolhas seguem \textcite{duan2022} para garantir comparabilidade direta com o estudo original.
 
 \section{Estrutura do Modelo}
+\label{sec:estrutura-modelo}
 
-A arquitetura do \textit{NeuralFactors} é composta por três componentes. O \textit{Stock Embedder} é uma rede neural que recebe as características históricas de cada ativo e produz os parâmetros que definem sua distribuição condicional de retorno. O \textit{Decoder} combina esses parâmetros com os fatores latentes para especificar a distribuição de cada retorno, impondo uma estrutura fatorial linear. O \textit{Encoder} resolve o problema inverso: dado que os retornos foram observados, infere quais fatores latentes provavelmente os geraram; ele é utilizado apenas durante o treinamento, pois na inferência os fatores são amostrados diretamente do \textit{prior}.
+A arquitetura é organizada em quatro blocos sequenciais: Extrator de Características, Codificador de Fatores, Preditor de Fatores e Decodificador de Fatores. Os dois primeiros são usados apenas durante o treinamento; os dois últimos participam também da inferência fora da amostra.
 
-Em cada data $t$, o \textit{Stock Embedder} processa as \textit{features} de todos os ativos válidos e produz quatro parâmetros por ativo: $\alpha_{i,t}$, $\beta_{i,t}$, $\sigma_{i,t}$ e $\nu_{i,t}$. Esses parâmetros alimentam simultaneamente o \textit{Decoder} e o \textit{Encoder}. No treinamento, o \textit{Encoder} utiliza os retornos observados $r_{t+1}$ junto com $\alpha$, $\beta$ e $\sigma$ para inferir a distribuição posterior dos fatores $q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)$. Amostras dessa distribuição são então passadas ao \textit{Decoder}, que avalia a verossimilhança de cada amostra dado os retornos observados. Na inferência, amostras de $z_{t+1}$ são extraídas diretamente do \textit{prior} $p(z_{t+1})$, e o \textit{Decoder} as converte em previsões de retorno.
-
-\begin{figure}[h]
-\centering
-\input{figuras/architecture}
-\caption{Arquitetura do modelo \textit{NeuralFactors}. O \textit{Stock Embedder} produz os parâmetros $\alpha_{i,t}$, $\beta_{i,t}$, $\sigma_{i,t}$ e $\nu_{i,t}$ a partir da informação disponível até o período $t$. O \textit{Encoder} infere a distribuição posterior dos fatores latentes $z_{t+1}$ durante o treinamento. O \textit{Decoder} avalia a verossimilhança dos retornos condicionalmente às amostras dos fatores.}
+\begin{figure}[htbp]
+    \centering
+    \fbox{\parbox{0.82\textwidth}{\centering\vspace{2.5cm}
+    {\small \textit{PLACEHOLDER} --- Diagrama detalhado da arquitetura.}\\[0.4cm]
+    {\small Versão granular mostrando as camadas internas de cada bloco,}\\
+    {\small as dimensões dos tensores trocados e os caminhos de gradiente}\\
+    {\small durante o treinamento.}\\[0.4cm]
+    {\small Elaboração própria.}
+    \vspace{2.5cm}}}
+    \caption{Diagrama detalhado da arquitetura do \textit{FactorVAE}.}
+    \label{fig:factorvae-detalhado}
 \end{figure}
 
+\subsection{Extrator de Características}
+\label{subsec:extrator}
 
-\subsection{Stock Embedder}
+O Extrator de Características processa a janela histórica de cada ativo de forma independente, com pesos compartilhados entre ativos. Para cada ativo $i$, uma projeção linear seguida de LeakyReLU mapeia o vetor de características de dimensão $C$ para a dimensão oculta $H$. Uma GRU \parencite{cho2014} processa a sequência projetada ao longo dos $T = 20$ dias. O último estado oculto $e^{(i)} \in \mathbb{R}^H$ é a representação por ativo, capturando o padrão temporal relevante de cada série de características. O compartilhamento de pesos entre ativos é a propriedade que permite ao modelo generalizar para ativos não vistos durante o treinamento, conforme avaliado na Seção~\ref{sec:avaliacao-robustez}.
 
-O \textit{Stock Embedder} transforma o conjunto de informações disponíveis até o período $t$ em quatro parâmetros específicos para cada ativo $i$: um intercepto idiossincrático $\alpha_{i,t}$, que captura o retorno esperado do ativo independentemente dos fatores comuns; um vetor de exposições fatoriais $\beta_{i,t} \in \mathbb{R}^{F}$, que determina a sensibilidade do ativo a cada um dos $F$ fatores latentes; um parâmetro de escala $\sigma_{i,t}$, que mede a dispersão do retorno em torno de sua média condicional; e os graus de liberdade $\nu_{i,t}$ da distribuição Student-$t$, que controlam o peso das caudas. Esses quatro parâmetros determinam integralmente a distribuição de $r_{i,t+1}$ dado o vetor de fatores latentes $z_{t+1}$. O \textit{Stock Embedder} é a mesma rede neural aplicada a cada ativo individualmente --- os pesos são compartilhados entre todas as ações, e a diferenciação entre elas provém exclusivamente das \textit{features} de entrada.
+\subsection{Codificador de Fatores}
+\label{subsec:codificador}
 
-\begin{figure}[h]
-\centering
-\input{figuras/stock_embedder}
-\caption{Representação visual do \textit{Stock Embedder}. A sequência temporal de \textit{features} é processada por uma projeção linear, um \textit{Transformer Encoder} e um MLP que incorpora as características estáticas, culminando nas quatro cabeças de saída.}
-\end{figure}
+O Codificador de Fatores recebe as representações por ativo $\{e^{(i)}\}_{i=1}^{N}$ e os retornos contemporâneos $y_t \in \mathbb{R}^N$ e produz a distribuição posterior $q(z|x_t, y_t) = \mathcal{N}(\mu_{\text{post}}, \text{diag}(\sigma_{\text{post}}^2))$.
 
-O modelo recebe dois tipos de informação para cada ativo. O primeiro é uma janela móvel de $L$ períodos anteriores de características temporais, denotada por $\{r_{i,t-L}, X^{ts}_{i,t-L}, \dots, r_{i,t}, X^{ts}_{i,t}\}$. Cada elemento dessa sequência é um vetor de dimensão $d_{ts}$ que concatena o retorno diário do ativo com suas variáveis fundamentalistas e os retornos dos índices de mercado observados naquela data, formando um tensor $S_{i} \in \mathbb{R}^{L \times d_{ts}}$. O segundo tipo são as características estáticas $X^{static}_{i} \in \mathbb{R}^{d_{static}}$, invariantes no tempo --- na presente implementação, a classificação setorial da empresa codificada como vetor \textit{one-hot}.
+A \textit{PortfolioLayer} parametriza $M = 64$ portfólios cujos pesos dependem das representações. Para o $j$-ésimo portfólio, o peso do ativo $i$ é:
 
-O processamento desses dados segue uma sequência de transformações. Em cada posição da janela de \textit{lookback}, o vetor de \textit{features} de dimensão $d_{ts}$ é projetado em um espaço de dimensão $h$ por meio de uma transformação linear. Como o vetor de entrada combina variáveis de naturezas distintas (retornos, múltiplos contábeis, índices de mercado), essa projeção as mapeia para uma representação de dimensionalidade uniforme, compatível com o processamento sequencial subsequente. A sequência projetada, agora um tensor $M \in \mathbb{R}^{L \times h}$, é então processada por um \textit{Transformer Encoder} de duas camadas, cujo mecanismo de atenção permite que cada posição temporal interaja com todas as demais, capturando dependências de longo prazo dentro da janela de \textit{lookback}. Do tensor de saída do \textit{Transformer}, extrai-se o último estado temporal $h_{2,i,t} \in \mathbb{R}^{h}$, que sintetiza a trajetória recente do ativo em um único vetor.
+\begin{equation}
+    a^{(i,j)} = \frac{\exp\!\left((W_p\, e^{(i)} + b_p)^{(j)}\right)}{\displaystyle\sum_{i'=1}^{N} \exp\!\left((W_p\, e^{(i')} + b_p)^{(j)}\right)}
+    \label{eq:pesos-portfolio}
+\end{equation}
 
-Essa representação temporal é então concatenada com o vetor de características estáticas $X^{static}_i$, incorporando ao perfil do ativo informações estruturais como o setor de atuação. O vetor resultante, de dimensão $h + d_{static}$, é processado por uma rede totalmente conectada (\textit{multi-layer perceptron}) de duas camadas com funções de ativação não lineares e \textit{dropout}, produzindo a representação final $h_{3,i,t} \in \mathbb{R}^{h}$. Enquanto o \textit{Transformer} captura dependências ao longo do tempo, o MLP captura interações entre os diferentes tipos de \textit{features} --- como a trajetória de retornos recente e o setor de atuação do ativo interagem para determinar as exposições fatoriais.
+\noindent em que $W_p$ e $b_p$ são parâmetros aprendidos. Os pesos derivam exclusivamente das representações históricas $e^{(i)}$, não dos retornos; os retornos contemporâneos entram apenas como o sinal a ser ponderado. O retorno do $j$-ésimo portfólio é:
 
-A partir de $h_{3,i,t}$, quatro transformações lineares independentes produzem os parâmetros da distribuição condicional:
+\begin{equation}
+    y_p^{(j)} = \sum_{i=1}^{N} y^{(i)}\, a^{(i,j)}
+    \label{eq:retorno-portfolio}
+\end{equation}
+
+A \textit{MappingLayer} projeta o vetor de retornos de portfólio $y_p \in \mathbb{R}^M$ nos parâmetros da posterior via duas camadas lineares independentes, com Softplus garantindo $\sigma_{\text{post}} > 0$. O codificador funciona como oráculo: sua posterior é informada pelos retornos realizados, impossíveis de observar na inferência. A validade desse oráculo — isto é, a confirmação de que a posterior captura sinal genuíno e não apenas ruído — é verificada pelo diagnóstico de Posterior IC reportado no Apêndice~\ref{ap:diagnosticos}.
+
+\subsection{Preditor de Fatores}
+\label{subsec:preditor}
+
+O Preditor de Fatores recebe as representações $\{e^{(i)}\}$ e produz a distribuição prior $p(z|x_t) = \mathcal{N}(\mu_{\text{prior}}, \text{diag}(\sigma_{\text{prior}}^2))$ sem acesso aos retornos contemporâneos. Ele é composto por $K = 16$ cabeças de atenção independentes, cada uma dedicada a estimar os parâmetros de um fator.
+
+Cada cabeça mantém uma query aprendida $q^{(k)} \in \mathbb{R}^H$ e calcula pesos de atenção via similaridade cosseno com gate ReLU:
+
+\begin{equation}
+    a_{\text{att}}^{(i,k)} = \frac{\max\!\left(0,\; \cos(q^{(k)},\, e^{(i)})\right)}{\displaystyle\sum_{i'} \max\!\left(0,\; \cos(q^{(k)},\, e^{(i')})\right)}
+    \label{eq:atencao-relu}
+\end{equation}
+
+\noindent O gate ReLU descarta ativos com similaridade negativa e normaliza sobre os ativos restantes, diferindo de uma atenção \textit{softmax} convencional que distribui peso não-nulo a todos os ativos. O agregado de mercado para o fator $k$ é $c^{(k)} = \sum_i a_{\text{att}}^{(i,k)}\, e^{(i)}$. Uma \textit{DistributionNetwork} compartilhada entre as $K$ cabeças projeta $c^{(k)}$ nos parâmetros $(\mu_{\text{prior}}^{(k)}, \sigma_{\text{prior}}^{(k)})$.
+
+\subsection{Decodificador de Fatores}
+\label{subsec:decodificador}
+
+O Decodificador de Fatores recebe as representações $\{e^{(i)}\}$ e os fatores amostrados $z$ e produz a distribuição preditiva sobre os retornos. Uma \textit{AlphaLayer} projeta $e^{(i)}$ nos parâmetros $(\mu_\alpha^{(i)}, \sigma_\alpha^{(i)})$ do componente idiossincrático via duas camadas lineares com Softplus. Uma \textit{BetaLayer} projeta $e^{(i)}$ na linha $i$ da matriz de exposições $\beta^{(i)} \in \mathbb{R}^K$ via projeção linear.
+
+Sob independência condicional entre o componente idiossincrático e os fatores, a distribuição preditiva do retorno do ativo $i$ é gaussiana com parâmetros em forma fechada:
 
 \begin{align}
-    \alpha_{i,t} &= w_\alpha^{\top} h_{3,i,t}, \\
-    \beta_{i,t}  &= W_\beta h_{3,i,t}, \\
-    \sigma_{i,t} &= S(w_\sigma^{\top} h_{3,i,t}), \\
-    \nu_{i,t}    &= S(w_\nu^{\top} h_{3,i,t}) + 4,
+    \mu_y^{(i)} &= \mu_\alpha^{(i)} + \sum_{k=1}^{K} \beta^{(i,k)}\, \mu_z^{(k)} \label{eq:mu-preditivo} \\
+    \sigma_y^{(i)} &= \sqrt{\left(\sigma_\alpha^{(i)}\right)^2 + \sum_{k=1}^{K} \left(\beta^{(i,k)}\right)^2 \left(\sigma_z^{(k)}\right)^2} \label{eq:sigma-preditivo}
 \end{align}
 
-em que $S(\cdot)$ denota a função \textit{softplus} ($S(x) = \log(1 + e^x)$), utilizada para garantir positividade nos parâmetros de escala e graus de liberdade. O deslocamento de 4 unidades em $\nu_{i,t}$ assegura graus de liberdade superiores a 4, condição necessária para que a distribuição Student-$t$ possua curtose finita --- ou seja, para que o quarto momento exista e as caudas não sejam tão pesadas a ponto de tornar indefinida a variabilidade da variância. As dimensões dos parâmetros refletem seus papéis no modelo: $\alpha_{i,t}$ é um escalar que representa o retorno médio idiossincrático do ativo; $\beta_{i,t}$ tem dimensão $F$ porque cada entrada mede a sensibilidade do ativo a um dos $F$ fatores latentes; $\sigma_{i,t}$ e $\nu_{i,t}$ são escalares que parametrizam a distribuição do ruído idiossincrático.
-
-
-\subsection{Decoder}
-
-Para cada ativo $i$, o \textit{Decoder} descreve o retorno no período $t+1$ como a soma de três componentes --- um intercepto específico, uma combinação linear dos fatores latentes e um termo idiossincrático:
-
-\begin{equation}
-    r_{i,t+1} = \alpha_{i,t} + \beta_{i,t}^{\top} z_{t+1} + \varepsilon_{i,t+1}.
-\end{equation}
-
-O intercepto $\alpha_{i,t}$ captura o retorno esperado do ativo que não depende dos fatores comuns. O produto $\beta_{i,t}^{\top} z_{t+1}$ traduz como o estado do mercado, representado por $z_{t+1}$, se manifesta no retorno desse ativo: se o primeiro fator latente sobe e a primeira entrada de $\beta_{i,t}$ é positiva, o retorno do ativo é puxado para cima proporcionalmente. O termo $\varepsilon_{i,t+1}$ é o resíduo, a parcela do retorno que não pode ser atribuída a nenhum fator comum e que, por construção, é independente entre ativos. Condicionalmente aos fatores, o retorno segue uma distribuição Student-$t$:
-
-\begin{equation}
-    p(r_{i,t+1} \mid z_{t+1}, \mathcal{F}_t) = t_{\nu_{i,t}}\big(\alpha_{i,t} + \beta_{i,t}^{\top} z_{t+1},\ \sigma_{i,t}\big).
-\end{equation}
-
-Todos os parâmetros dessa equação são produzidos pelo \textit{Stock Embedder}. O \textit{Decoder} em si não possui parâmetros treináveis próprios: ele é uma especificação funcional que combina os parâmetros aprendidos com os fatores latentes para produzir a distribuição de cada retorno. Quando os graus de liberdade $\nu_{i,t}$ são baixos (próximos de 4, o mínimo imposto), a distribuição atribui probabilidade substancialmente maior a eventos extremos do que a Gaussiana; à medida que $\nu_{i,t}$ cresce, a Student-$t$ converge para a Normal, de modo que o modelo pode calibrar endogenamente o peso das caudas para cada ativo em cada período.
-
-Como toda a correlação entre ativos emerge da componente sistemática comum $\beta_{i,t}^{\top} z_{t+1}$, a matriz de covariância condicional dos retornos pode ser obtida em forma fechada. Denotando por $B_t \in \mathbb{R}^{N \times F}$ a matriz cujas linhas são os vetores $\beta_{i,t}$ e por $\Sigma_x \in \mathbb{R}^{N \times N}$ a matriz diagonal com entradas $\sigma_{i,t}^2$:
-
-\begin{equation}
-    \Sigma_{t+1} = \Sigma_x + B_t \Sigma_z B_t^{\top}.
-    \label{eq:cov_decomp}
-\end{equation}
-
-O primeiro termo captura o risco idiossincrático de cada ativo. O segundo concentra toda a dependência cruzada em um componente de posto no máximo $F$, de modo que a estrutura de correlação entre $N$ ativos é comprimida em $F$ direções de risco. Essa é a mesma decomposição $\Sigma = B \Sigma_f B^{\top} + \Sigma_\varepsilon$ dos modelos fatoriais clássicos apresentada na revisão da literatura, com a diferença de que aqui $B_t$ e $\Sigma_x$ são condicionais ao período $t$, ajustando-se às condições de mercado correntes. Na avaliação do modelo e na otimização de portfólios, essa expressão será utilizada diretamente para calcular as matrizes de covariância, sem necessidade de simulação de Monte Carlo.
-
-
-\subsection{Encoder}
-
-O processo generativo do modelo descreve como os retornos são gerados a partir dos fatores latentes. Durante o treinamento, o problema é inverso: observam-se os retornos $r_{t+1}$ e busca-se inferir quais valores dos fatores tornam esses dados mais prováveis. O \textit{Encoder} realiza essa inferência.
-
-A necessidade do \textit{Encoder} decorre da função objetivo do treinamento. Para maximizar a verossimilhança condicional $p(r_{t+1} \mid \mathcal{F}_t)$, é preciso integrar sobre todas as possíveis realizações dos fatores latentes:
-
-\[
-p(r_{t+1} \mid \mathcal{F}_t) = \int p(r_{t+1} \mid z_{t+1}, \mathcal{F}_t) \, p(z_{t+1}) \, dz_{t+1}.
-\]
-
-Essa integral é intratável, e a abordagem variacional utilizada no treinamento (descrita na seção seguinte) requer uma distribuição auxiliar $q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)$ que aproxime a posterior verdadeira dos fatores. O \textit{Encoder} é a construção dessa distribuição.
-
-A posterior verdadeira dos fatores é definida pelo teorema de Bayes: $p(z_{t+1} \mid r_{t+1}, \mathcal{F}_t) \propto p(r_{t+1} \mid z_{t+1}, \mathcal{F}_t) \, p(z_{t+1})$. Para que essa expressão seja calculável em forma fechada, verossimilhança e \textit{prior} precisam pertencer a famílias conjugadas --- o produto das duas densidades deve resultar em uma distribuição de forma conhecida, da qual se possam extrair média e covariância diretamente. A família Gaussiana possui essa propriedade: quando \textit{prior} e verossimilhança são ambos Normais, o posterior é também Normal com fórmula fechada, resultado que o PPCA explora conforme discutido na revisão da literatura. No \textit{NeuralFactors}, contudo, tanto o \textit{prior} $p(z_{t+1}) = t_{\nu_z}(\mu_z, \Sigma_z)$ quanto a distribuição condicional dos retornos são Student-$t$, e a família Student-$t$ não é conjugada consigo mesma. O posterior exato não pode ser obtido analiticamente.
-
-A solução consiste em aproximar as distribuições Student-$t$ por distribuições Normais antes de calcular o posterior, utilizando \textit{moment matching}: para cada Student-$t$ com média $\mu$, escala $\sigma$ e $\nu$ graus de liberdade, constrói-se a Gaussiana que preserva os dois primeiros momentos da distribuição original. A variância de uma Student-$t$ com escala $\sigma$ e $\nu$ graus de liberdade é $\frac{\nu}{\nu - 2} \sigma^2$ (válida para $\nu > 2$), de modo que a Gaussiana equivalente é $\mathcal{N}\!\left(\mu,\, \frac{\nu}{\nu - 2}\,\sigma^2\right)$. Essa substituição é aplicada tanto ao \textit{prior} dos fatores quanto à distribuição condicional dos retornos, e com ela o sistema passa a ter \textit{prior} Gaussiano e verossimilhança Gaussiana, recuperando a conjugação Normal-Normal.
-
-Sob a aproximação Gaussiana, os retornos condicionais de cada ativo são modelados como $r_{i,t+1} \mid z_{t+1} \sim \mathcal{N}\!\left(\alpha_{i,t} + \beta_{i,t}^{\top} z_{t+1},\, \tilde{\sigma}_{i,t}^2\right)$, onde $\tilde{\sigma}_{i,t}^2 = \frac{\nu_{i,t}}{\nu_{i,t} - 2} \sigma_{i,t}^2$ é a variância ajustada pelo \textit{moment matching}. De forma análoga, o \textit{prior} aproximado é $z_{t+1} \sim \mathcal{N}(\mu_z, \tilde{\Sigma}_z)$, com $\tilde{\Sigma}_z = \frac{\nu_z}{\nu_z - 2} \Sigma_z$. Como a verossimilhança é um produto de $N$ Normais independentes (condicionalmente a $z$), o modelo conjunto pode ser escrito em forma matricial: $r_{t+1} \mid z_{t+1} \sim \mathcal{N}(\alpha_t + B_t z_{t+1},\, \Sigma_x)$, onde $\alpha_t$ é o vetor de interceptos, $B_t$ a matriz de exposições e $\Sigma_x$ a diagonal das variâncias idiossincráticas ajustadas. Esse é um modelo linear Gaussiano padrão, e o posterior de $z_{t+1}$ é dado pela fórmula da regressão linear bayesiana:
-
-\[
-q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t) = \mathcal{N}\!\big(\mu_{z|B,r},\, \Sigma_{z|B}\big),
-\]
-
-com covariância posterior
-
-\[
-\Sigma_{z|B} = \left(\Sigma_z^{-1} + B_t^{\top} \Sigma_x^{-1} B_t\right)^{-1},
-\]
-
-e média condicional
-
-\[
-\mu_{z|B,r} = \Sigma_{z|B} \left(\Sigma_z^{-1} \mu_z + B_t^{\top} \Sigma_x^{-1} (r_{t+1} - \alpha_t)\right).
-\]
-
-Para simplificação da notação, as variâncias ajustadas pelo \textit{moment matching} estão incorporadas em $\Sigma_x$ e $\Sigma_z$ nas expressões acima.
-
-A estrutura dessas expressões tem interpretação direta em termos bayesianos. A covariância posterior $\Sigma_{z|B}$ é o inverso da soma de duas matrizes de precisão: $\Sigma_z^{-1}$, que representa a informação trazida pelo \textit{prior}, e $B_t^{\top} \Sigma_x^{-1} B_t$, que representa a informação trazida pelos dados. Quanto maior a quantidade de ativos com exposições fatoriais altas e baixo ruído idiossincrático, maior a contribuição do segundo termo, e mais concentrado fica o posterior. A média $\mu_{z|B,r}$ equilibra essas duas fontes: é uma média ponderada entre a crença prévia $\mu_z$, puxada pela precisão do \textit{prior} $\Sigma_z^{-1}$, e a evidência dos dados, puxada por $B_t^{\top} \Sigma_x^{-1} (r_{t+1} - \alpha_t)$. Quando o \textit{prior} é forte relativamente aos dados, os fatores inferidos são puxados em direção a $\mu_z$; quando os dados são informativos, a evidência domina. O termo $(r_{t+1} - \alpha_t)$ remove os interceptos idiossincráticos dos retornos antes da ponderação, isolando a parcela atribuível aos fatores comuns. O produto $B_t^{\top} \Sigma_x^{-1}$ projeta esses retornos residuais no espaço dos fatores, ponderando cada ativo pelo inverso de sua variância idiossincrática --- ativos com menor ruído recebem maior peso na inferência.
-
-O \textit{Encoder} não possui parâmetros treináveis próprios: as expressões acima são funções determinísticas dos parâmetros produzidos pelo \textit{Stock Embedder} ($\alpha$, $\beta$, $\sigma$) e dos parâmetros globais do \textit{prior} ($\mu_z$, $\Sigma_z$). A inferência realizada é puramente algébrica, uma sequência de operações matriciais que resolve o sistema linear bayesiano em forma fechada. O \textit{Encoder} é utilizado exclusivamente durante o treinamento, onde fornece a distribuição $q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)$ da qual se extraem amostras para o cálculo da função de perda CIWAE. Na inferência, os retornos de $t+1$ ainda não foram observados, de modo que os fatores são amostrados diretamente do \textit{prior} $p(z_{t+1}) = t_{\nu_z}(\mu_z, \Sigma_z)$.
-
-Cabe precisar que os parâmetros do \textit{prior} --- $\mu_z$, $\Sigma_z$ e $\nu_z$ --- são parâmetros globais aprendidos durante o treinamento, fixos ao longo do tempo. A notação $p(z^{(k)} \mid \mathcal{F}_t)$ que aparece na formulação do CIWAE é de consistência com o processo generativo condicional, e não indica variação temporal do \textit{prior}. Toda a dinâmica temporal do modelo é capturada pelo \textit{Stock Embedder}, que produz $\beta_{i,t}$, $\sigma_{i,t}$ e $\nu_{i,t}$ específicos para cada período. O \textit{prior} fixo atua como regularização global, evitando que os fatores latentes divirjam arbitrariamente durante o treinamento.
-%################################################
+\noindent Essa composição analítica elimina a necessidade de amostragem Monte Carlo na inferência e entrega estimativas de risco por ativo como subproduto direto do modelo.
 
 \section{Treinamento}
+\label{sec:treinamento}
 
-Treinar o modelo consiste em ajustar os parâmetros das redes neurais e do prior dos fatores de modo a maximizar a probabilidade dos retornos observados nos dados históricos. Como o \textit{NeuralFactors} é um modelo generativo, seu objetivo não é apenas prever valores pontuais, mas aprender a distribuição condicional completa dos retornos futuros. Formalmente, deseja-se estimar os parâmetros que maximizam a log-verossimilhança média
+A função objetivo é o negativo do ELBO adaptado ao contexto de previsão de retornos:
 
-\[
-\sum_t \log p(r_{t+1} \mid \mathcal{F}_t),
-\]
+\begin{equation}
+    \mathcal{L}(x, y) = -\frac{1}{N}\sum_{i=1}^{N} \log p_{\phi_{\text{dec}}}\!\left(y^{(i)} \;\middle|\; x,\, z_{\text{post}}\right) + \gamma \cdot \mathrm{KL}\!\left(q_{\phi_{\text{enc}}}(z|x,y) \;\|\; p_{\phi_{\text{pred}}}(z|x)\right)
+    \label{eq:loss}
+\end{equation}
 
-onde a soma percorre as observações da amostra.
+\noindent O primeiro termo é a NLL gaussiana entre os retornos observados e a distribuição reconstruída via posterior, com média sobre os $N$ ativos da cross-section. O segundo termo é a divergência KL entre a posterior do codificador e a prior do preditor, com média sobre as $K$ dimensões latentes; o hiperparâmetro $\gamma$ controla o peso relativo do termo de regularização. Detalhes sobre o agendamento de $\gamma$ durante o treinamento e decisões de escala dos termos da loss estão no Apêndice~\ref{ap:estabilizacao}.
 
-A dificuldade central decorre da presença dos fatores latentes. A probabilidade condicional dos retornos envolve a integração sobre o vetor $z_{t+1}$, o que impede a obtenção de uma expressão analítica direta para a log-verossimilhança. Assim, a maximização direta torna-se inviável, exigindo uma aproximação sistemática da integral.
-
-\subsection{Inferência Variacional e ELBO}
-
-Para tornar o problema tratável, introduz-se a distribuição variacional $q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)$ e utiliza-se a identidade
-
-\[
-\log p(r_{t+1} \mid \mathcal{F}_t)
-=
-\log
-\int
-q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)
-\frac{
-p(r_{t+1} \mid z_{t+1}, \mathcal{F}_t)
-p(z_{t+1})
-}{
-q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)
-}
-dz_{t+1}.
-\]
-
-Reescrevendo a integral como esperança sob $q(\cdot)$, obtém-se
-
-\[
-\log p(r_{t+1} \mid \mathcal{F}_t)
-=
-\log
-\mathbb{E}_{q}
-\left[
-\frac{
-p(r_{t+1} \mid z_{t+1}, \mathcal{F}_t)
-p(z_{t+1})
-}{
-q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)
-}
-\right].
-\]
-
-Aplicando a desigualdade de Jensen, obtém-se um limite inferior para a log-verossimilhança,
-
-\[
-\log p(r_{t+1} \mid \mathcal{F}_t)
-\ge
-\mathbb{E}_{q}
-\left[
-\log p(r_{t+1} \mid z_{t+1}, \mathcal{F}_t)
-+
-\log p(z_{t+1})
--
-\log q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)
-\right].
-\]
-
-Essa expressão define o \textit{Evidence Lower Bound} (ELBO). A maximização do ELBO fornece uma aproximação consistente para a maximização da log-verossimilhança, permitindo que os parâmetros do modelo sejam estimados por meio de métodos de otimização baseados em gradiente.
-
-\subsection{Importance Weighted Autoencoder (IWAE)}
-
-Embora o ELBO permita estimar os parâmetros do modelo de forma consistente, ele constitui apenas um limite inferior para a log-verossimilhança. Em modelos latentes de alta dimensão, esse limite pode ser relativamente frouxo, especialmente quando a distribuição variacional $q(\cdot)$ difere significativamente da posterior verdadeira. Para reduzir essa discrepância, \textcite{burda2016} propõem o \textit{Importance Weighted Autoencoder} (IWAE), que fornece uma aproximação mais apertada para a log-verossimilhança.
-
-A ideia central do IWAE consiste em substituir a única amostra da distribuição variacional por múltiplas amostras independentes. Seja $\{z^{(1)}, \dots, z^{(K)}\}$ um conjunto de realizações extraídas de $q(z_{t+1} \mid r_{t+1}, \mathcal{F}_t)$. A esperança presente na formulação do ELBO pode então ser aproximada por uma média amostral ponderada,
-
-\[
-\frac{1}{K}
-\sum_{k=1}^{K}
-\frac{
-p(r_{t+1} \mid z^{(k)}, \mathcal{F}_t)
-p(z^{(k)})
-}{
-q(z^{(k)} \mid r_{t+1}, \mathcal{F}_t)
-}.
-\]
-
-Inserindo essa aproximação na expressão da log-verossimilhança, obtém-se o seguinte limite inferior:
-
-\[
-\log p(r_{t+1} \mid \mathcal{F}_t)
-\ge
-\mathbb{E}
-\left[
-\log
-\left(
-\frac{1}{K}
-\sum_{k=1}^{K}
-\frac{
-p(r_{t+1} \mid z^{(k)}, \mathcal{F}_t)
-p(z^{(k)})
-}{
-q(z^{(k)} \mid r_{t+1}, \mathcal{F}_t)
-}
-\right)
-\right].
-\]
-
-Esse limite corresponde ao IWAE bound. À medida que $K$ aumenta, a aproximação converge para a log-verossimilhança verdadeira, tornando o limite inferior progressivamente mais apertado. Em termos práticos, a utilização de múltiplas amostras melhora a qualidade da estimativa e reduz o viés introduzido pela aproximação variacional.
-
-No contexto do \textit{NeuralFactors}, essa estratégia é particularmente relevante, pois a distribuição dos fatores latentes desempenha papel central na determinação da estrutura de dependência entre os ativos. O uso de múltiplas amostras durante o treinamento contribui para uma representação mais fiel da incerteza associada aos fatores e, consequentemente, para uma estimação mais precisa da distribuição conjunta dos retornos.
-
-\subsection{Conditional IWAE (CIWAE)}
-
-A formulação apresentada até aqui foi descrita em termos gerais para modelos latentes. No caso do \textit{NeuralFactors}, contudo, a distribuição de interesse é explicitamente condicional à informação disponível até o período $t$. O objetivo do treinamento não é estimar $p(r)$, mas sim a distribuição condicional
-
-\[
-p(r_{t+1} \mid \mathcal{F}_t).
-\]
-
-Essa distinção implica que tanto o prior dos fatores quanto a distribuição variacional são condicionais ao conjunto informacional $\mathcal{F}_t$. A extensão natural do IWAE para esse contexto é o \textit{Conditional Importance Weighted Autoencoder} (CIWAE), no qual a função objetivo passa a ser escrita como
-
-\[
-\log p(r_{t+1} \mid \mathcal{F}_t)
-\ge
-\mathbb{E}
-\left[
-\log
-\left(
-\frac{1}{K}
-\sum_{k=1}^{K}
-\frac{
-p(r_{t+1} \mid z^{(k)}, \mathcal{F}_t)
-p(z^{(k)} \mid \mathcal{F}_t)
-}{
-q(z^{(k)} \mid r_{t+1}, \mathcal{F}_t)
-}
-\right)
-\right].
-\]
-
-A diferença em relação ao IWAE padrão reside no condicionamento explícito em $\mathcal{F}_t$, que incorpora as informações históricas no prior dos fatores e na distribuição variacional. Essa formulação mantém a coerência com o processo generativo descrito anteriormente e garante que a estimação respeite a natureza condicional do problema.
-
-No treinamento, amostras $z^{(k)}$ são extraídas da distribuição variacional e utilizadas para aproximar a esperança presente na expressão acima. A maximização desse limite inferior fornece estimativas consistentes para os parâmetros das redes neurais e do prior dos fatores, permitindo que o modelo aprenda simultaneamente a estrutura das exposições e a dinâmica da distribuição conjunta dos retornos.
-
-%##################
-
-\subsection{Configuração e Hiperparâmetros}
-
-O treinamento do modelo foi realizado por meio de otimização estocástica baseada em gradiente, utilizando o limite inferior definido pelo CIWAE como função objetivo. Em cada iteração, para uma data $t$, consideram-se todos os ativos disponíveis naquele dia como uma única observação conjunta, preservando a natureza multivariada da distribuição estimada. Essa escolha é consistente com a estrutura do modelo, no qual a dependência entre ativos é mediada pelos fatores latentes.
-
-O número de amostras utilizadas no cálculo do limite IWAE foi fixado em $K=20$, conforme recomendado em \textcite{gopal2024}. Valores maiores de $K$ produzem aproximações mais apertadas da log-verossimilhança, mas aumentam o custo computacional de forma aproximadamente linear. O valor adotado representa um compromisso entre precisão da estimativa e viabilidade computacional.
-
-A otimização foi conduzida com o algoritmo Adam, com taxa de aprendizado de $10^{-4}$ e regularização $L_2$ (weight decay) de $10^{-6}$. Todas as camadas ocultas do modelo utilizam dimensão 256, com taxa de \textit{dropout} de 0,25, em linha com a especificação original. O modelo foi treinado por 200.000 iterações, com cálculo da perda de validação a cada 1.000 passos, sendo selecionado o conjunto de parâmetros associado ao menor valor da função objetivo no conjunto de validação.
-
-Para aumentar a estabilidade da convergência, foi utilizada média exponencial dos parâmetros (\textit{Polyak averaging}) a partir da metade do processo de treinamento. Esse procedimento reduz a variância das estimativas e melhora o desempenho fora da amostra, particularmente em modelos de alta dimensionalidade.
-
-Todos os experimentos foram implementados em \textit{PyTorch}, utilizando \textit{PyTorch Lightning} para organização do treinamento, gerenciamento de dispositivos e controle de experimentos. A combinação dessas escolhas assegura reprodutibilidade e alinhamento com a metodologia descrita no artigo original.
-
-%########################################################
+O otimizador é Adam com \textit{learning rate} $3 \times 10^{-4}$ e \textit{weight decay} $10^{-4}$. O \textit{batch} é uma única cross-section por passo, refletindo a natureza multivariada da observação: todas as séries de ativos na data $t$ são processadas conjuntamente. O critério de parada antecipada (\textit{early stopping}) monitora o Rank IC no conjunto de validação com paciência de 10 épocas. O framework de organização do treinamento é PyTorch Lightning.
 
 \section{Dados}
+\label{sec:dados}
 
 \subsection{Universo de Ativos}
+\label{subsec:universo}
 
-Os dados foram obtidos de duas fontes: a plataforma Economatica, que
-forneceu séries históricas de preços e variáveis fundamentalistas das
-empresas listadas na B3, e o terminal Bloomberg, do qual foram extraídas
-séries de índices de mercado domésticos e internacionais. O universo de
-ativos é definido pelo conjunto de ações com preço de fechamento ajustado
-disponível na Economatica ao longo do período amostral, totalizando 956
-tickers únicos. Em cada data de negociação $t$, um ativo é considerado
-válido se possui janela de \textit{lookback} de pelo menos $L = 256$ dias
-úteis completa e retorno-alvo disponível para o período seguinte. O número
-de ativos válidos por data varia tipicamente entre 200 e 400, dos quais
-841 tickers possuem cobertura no período de treinamento.
+O universo de ativos é composto por todos os tickers com \textit{pricing} válido na Economatica, reconstruído ponto a ponto sem restrição ao IBX ou a qualquer índice de referência. O universo médio no período de teste é de aproximadamente 300--500 ativos, contra mais de 3.000 no estudo original de \textcite{duan2022} — diferença estrutural que precisa estar registrada porque condiciona o significado do TopK-Drop com $k = 50$ (aproximadamente 15--25\% do cross-section brasileiro, contra cerca de 1,5\% do A-share chinês) e as comparações em geral. O mercado brasileiro apresenta concentração setorial marcada em commodities, energia e financeiro, que diferencia seu perfil de covariância do mercado chinês e do norte-americano.
 
 \subsection{Período e Divisão da Amostra}
+\label{subsec:periodo}
 
-Os dados cobrem o período de janeiro de 2005 a março de 2026. A amostra
-foi dividida em três subperíodos sem sobreposição: treinamento, de janeiro
-de 2005 a dezembro de 2018; validação, de janeiro de 2019 a dezembro de
-2022; e teste, de janeiro de 2023 a março de 2026. As estatísticas de
-normalização são calculadas exclusivamente sobre o conjunto de treinamento
-e aplicadas sem modificação aos demais conjuntos, de modo a evitar
-vazamento de informação prospectiva. O conjunto de validação é utilizado
-para monitoramento da função de perda fora da amostra e seleção do modelo
-durante o treinamento; o conjunto de teste é reservado inteiramente para
-a avaliação final. Embora a primeira observação disponível seja janeiro
-de 2005, a primeira data de treinamento efetiva é aproximadamente janeiro
-de 2006, pois o modelo requer uma janela de \textit{lookback} de 256 dias
-úteis anteriores à data de previsão.
+% PLACEHOLDER: definir datas exatas após consolidar o dataset.
+% Estrutura esperada: 
+%   Treinamento: [data_inicio] a [data_fim_treino]
+%   Validação:   [data_inicio_val] a [data_fim_val]
+%   Teste:       [data_inicio_teste] a [data_fim_teste]
+% O período de teste deve cobrir: pandemia de 2020, ciclo de aperto 2021--2022, 
+% mudança de governo 2023. Os três subperíodos não se sobrepõem.
 
-\subsection{Variáveis e Pré-processamento}
+Os subperíodos de treinamento, validação e teste são definidos sem sobreposição temporal, com as datas a serem especificadas após a consolidação do dataset. O período de teste engloba múltiplos regimes macroeconômicos relevantes para o mercado brasileiro: a pandemia de Covid-19 e o \textit{crash} de 2020, o ciclo de aperto monetário de 2021--2022 e a mudança de governo de 2023. Essa cobertura permite avaliar a robustez do sinal em diferentes configurações de risco e liquidez.
 
-As variáveis de entrada são organizadas em características temporais,
-que variam por ativo e por data, e características estáticas, invariantes
-no tempo. As características temporais compõem o tensor
-$S \in \mathbb{R}^{N_t \times L \times d_{ts}}$, com $d_{ts} = 41$. Em
-cada período $u$ da janela de \textit{lookback}, o vetor de entrada de
-cada ativo é formado pela concatenação do log-retorno diário, de onze
-variáveis fundamentalistas específicas da empresa e de log-retornos de
-29 índices de mercado extraídos do Bloomberg. A Tabela \ref{tab:features}
-apresenta o conjunto completo de variáveis.
+\subsection{Características Utilizadas}
+\label{subsec:caracteristicas}
 
-\begin{table}[H]
-\centering
-\caption{Variáveis de entrada do modelo}
-\label{tab:features}
+O modelo recebe como entrada $C = 20$ características técnicas calculadas a partir de preço e volume, organizadas em seis categorias. A Tabela~\ref{tab:caracteristicas} lista as características com suas categorias e janelas de cálculo; as fórmulas detalhadas estão no Apêndice~\ref{ap:caracteristicas}.
 
-\begin{tabular}{ll}
-\multicolumn{2}{c}{\textit{Fundamentalistas}} \\
-\cmidrule(lr){1-2}
-\textit{Valuation / Mercado} & \textit{Rentabilidade / Caixa} \\
-\midrule
-P/VPA        & ROA (TTM)          \\
-EV/EBITDA    & ROE (TTM)          \\
-P/L          & Margem Bruta (TTM) \\
-Volume       & Dív. Bruta / Ativo \\
-             & Dív. Líq. / PL     \\
-             & FCF / Dívida       \\
-             & FCF Yield          \\
-\bottomrule
-\end{tabular}
-
-\vspace{0.5em}
-
-\begin{tabular}{llll}
-\multicolumn{4}{c}{\textit{Índices Bloomberg}} \\
-\cmidrule(lr){1-4}
-\textit{Brasil / Macro} & \textit{Renda Fixa} &
-\textit{Commodities} & \textit{Internacional} \\
-\midrule
-VIX        & BZRFIMAB & BCOMAGTR & MXEF  \\
-MOVE       & BZRFIMA  & BCOMGCTR & MXCN  \\
-CDS Brasil & SPUHYBDT & BCOMINTR & MXJP  \\
-DI Over    &          & BCOMNGTR & MXGB  \\
-BRL/USD    &          & BCOMSITR & MXCA  \\
-MXBRSC     &          & BCOMCOT  & MXEU  \\
-MXBRLC     &          &          & MXPCJ \\
-MXBR000V   &          &          & MXUS  \\
-IDIV       &          &          & MXLA  \\
-MLCXBV     &          &          &       \\
-MU702608   &          &          &       \\
-\bottomrule
-\end{tabular}
-
-\caption*{\footnotesize \textbf{Nota:} Variáveis fundamentalistas de frequência
-trimestral são propagadas para a grade diária por \textit{forward fill}. Todas
-as séries de índices entram como log-retornos diários. A classificação setorial
-($d_{static} = 11$) é codificada separadamente como vetor \textit{one-hot}.}
-\caption*{Fonte: Elaboração própria.}
+\begin{table}[htbp]
+    \centering
+    \caption{Características utilizadas como entrada do modelo.}
+    \label{tab:caracteristicas}
+    \begin{tabular}{llc}
+        \toprule
+        \textbf{Nome} & \textbf{Categoria} & \textbf{Janela (dias)} \\
+        \midrule
+        Ret1, Ret2, Ret5, Ret10, Ret20  & Retorno         & 1, 2, 5, 10, 20 \\
+        Vol5, Vol10, Vol20              & Volatilidade    & 5, 10, 20       \\
+        VolRatio                        & Volatilidade    & 5/20            \\
+        Turnover5, Turnover10           & Volume          & 5, 10           \\
+        VWAPDev                         & Volume          & 5               \\
+        RSI                             & Indicador téc.  & 14              \\
+        MADev5, MADev20                 & Indicador téc.  & 5, 20           \\
+        Skew20, Kurt20                  & Momentos sup.   & 20              \\
+        Amihud20                        & Iliquidez       & 20              \\
+        \bottomrule
+    \end{tabular}
+    \fonte{Elaboração própria. Fórmulas detalhadas no Apêndice~\ref{ap:caracteristicas}.}
 \end{table}
 
-Os 29 índices Bloomberg cobrem cinco categorias: risco e sentimento global
-(VIX, MOVE, CDS Brasil 5 anos), variáveis macroeconômicas domésticas
-(taxa DI \textit{over} e câmbio BRL/USD), renda variável brasileira por
-estilo e segmento de capitalização (MSCI Brasil Small Cap, Large Cap,
-Value, IDIV, MLCXBV e MU702608), renda fixa doméstica e internacional
-(IMA-B, IMA-B 5+ e SPUHYBDT) e commodities e índices de ações
-internacionais por região (MXEF, MXCN, MXJP, MXGB, MXCA, MXEU, MXPCJ,
-MXUS, MXLA). Todas essas séries entram no modelo como log-retornos
-diários, de modo que o vetor de entrada captura variações contemporâneas
-das condições de mercado sem incorporar tendências de nível de longo prazo.
+\subsection{Construção do Universo Point-in-Time}
+\label{subsec:point-in-time}
 
-As variáveis fundamentalistas de frequência trimestral são propagadas
-para a grade diária por \textit{forward fill}, de modo que cada data
-recebe o último valor reportado até aquele momento. O \textit{backward
-fill} é deliberadamente omitido para evitar a incorporação de informações
-ainda não disponíveis ao investidor. Os indicadores FCF/Dívida e FCF
-Yield apresentam cobertura de aproximadamente 67\% e 70\% das observações
-potenciais após o preenchimento, respectivamente, em função da
-disponibilidade irregular de dados de fluxo de caixa na Economatica.
-Valores ausentes remanescentes são substituídos por zero, valor
-equivalente à média na escala normalizada após a padronização.
+A construção point-in-time é a decisão metodológica que mais diretamente afeta a credibilidade dos resultados. A inclusão de um ticker na cross-section da data $t$ exige que ele apresente $T = 20$ dias úteis consecutivos sem lacuna calendárica superior a 7 dias (tolerância para feriados nacionais). Tickers com suspensões prolongadas de negociação ou liquidez intermitente são descartados automaticamente nas datas em que essa condição falha, sem exclusão retroativa. A composição do universo é reconstruída a cada data, eliminando o viés de sobrevivência que surgiria da exclusão de empresas que deslistaram durante o período amostral. A auditoria do procedimento — verificação da presença de tickers que deslistaram dentro do período de treinamento — é apresentada no Apêndice~\ref{ap:diagnosticos}.
 
-As características estáticas correspondem à classificação setorial de
-cada empresa, codificada como vetor \textit{one-hot} com base no setor
-econômico de nível 1, análogo ao nível 1 da classificação GICS. Essa
-representação resulta em $X^{static}_i \in \mathbb{R}^{11}$, invariante
-no tempo para cada ativo. Os retornos diários são normalizados pela
-divisão pelo desvio padrão calculado sobre o período de treinamento, sem
-subtração da média, em linha com a especificação de \textcite{gopal2024},
-na qual o intercepto $\alpha_{i,t}$ aprendido pelo \textit{Stock Embedder}
-captura o retorno esperado de cada ativo. As variáveis fundamentalistas
-e os retornos de índices são normalizados por z-score global, com média
-e desvio padrão calculados sobre o período de treinamento.
+\subsection{Pré-processamento}
+\label{subsec:preprocessing}
+
+O retorno forward é definido como o retorno logarítmico do fechamento de $t{+}1$ em relação ao fechamento de $t$, conforme \textcite{duan2022}. Filtros de saneamento são aplicados para eliminar artefatos: preço mínimo de R\$~0,10 (excluindo penny stocks com dinâmica de preços atípica) e retorno diário absoluto máximo de 50\% (excluindo eventos de \textit{split} não ajustado e erros de dados). A normalização é realizada de forma cross-sectional em cada data — \textit{z-score} sobre os $N_t$ ativos disponíveis — tanto para as características quanto para os retornos. As estatísticas de normalização (médias e desvios-padrão) são calculadas exclusivamente sobre o período de treinamento e aplicadas sem re-estimação aos períodos de validação e teste.
+
+\section{Modelos de Comparação}
+\label{sec:baselines}
+
+Os modelos de comparação seguem uma progressão deliberada que isola sucessivamente as propriedades da arquitetura do \textit{FactorVAE}. O Momentum captura o sinal econômico mais simples: retorno dos últimos 20 dias como previsão direta. O Linear/Ridge é o limite do problema sob hipótese de linearidade com as mesmas $C = 20$ características como entrada. O MLP adiciona não-linearidade sem estrutura temporal. O GRU adiciona estrutura temporal mas sem componente probabilístico e sem estrutura fatorial explícita. A progressão do Momentum ao GRU é, portanto, aditiva em complexidade, e o \textit{FactorVAE} acrescenta sobre o GRU a estrutura fatorial e a inferência variacional.
+
+A ressalva metodológica é explícita: os modelos diferem do \textit{FactorVAE} em mais de uma dimensão simultaneamente, de modo que a comparação não constitui ablação formal. As diferenças observadas são consistentes com a contribuição das propriedades que o \textit{FactorVAE} adiciona, mas a atribuição causal estrita ficaria a cargo de um estudo de ablação dedicado, fora do escopo deste trabalho.
+
+\section{Procedimentos de Avaliação}
+\label{sec:avaliacao}
+
+\subsection{Skill Cross-Sectional}
+\label{subsec:avaliacao-skill}
+
+O Rank IC é calculado como a correlação de Spearman entre os retornos previstos e os retornos realizados no \textit{cross-section} de cada data $t$ do período de teste. O Rank ICIR é a razão entre a média e o desvio-padrão das observações diárias de Rank IC ao longo do período de teste. As métricas foram apresentadas na Seção~\ref{sec:avaliacao-lit}; o que se registra aqui é que a avaliação é restrita ao conjunto de teste e calculada separadamente para cada modelo.
+
+\subsection{Estratégia de Portfólio}
+\label{subsec:avaliacao-portfolio}
+
+A estratégia TopK-Drop \parencite{yang2020} é executada com $k = 50$ ações em carteira e no máximo $n = 5$ substituições por dia. A escolha de $k = 50$ segue o paper original e sustenta comparabilidade com a literatura, ainda que represente fração maior do universo brasileiro (aproximadamente 15--25\% do cross-section típico no período de teste) do que do A-share chinês (cerca de 1,5\%). O custo de transação é fixado em 10~bps \textit{one-way} por posição substituída (equivalente a $\approx$~20~bps \textit{round-trip}), aplicado a cada troca de ativo na carteira a cada dia. O benchmark é o portfólio igual-ponderado sobre o mesmo universo disponível a cada data.
+
+\subsection{Robustez a Ativos Não Vistos}
+\label{subsec:avaliacao-robustez}
+
+O teste de holdout-retrain segue o protocolo de \textcite{duan2022}: $m$ tickers selecionados aleatoriamente são removidos do conjunto de treinamento, o modelo é retreinado do zero, e o Rank IC é calculado exclusivamente sobre esses $m$ tickers no conjunto de teste. O procedimento é repetido para múltiplos valores de $m$ e com múltiplas amostras aleatórias de tickers, produzindo uma distribuição de Rank IC sobre ativos nunca vistos durante o treinamento. A comparação com o Rank IC de universo completo quantifica a degradação de desempenho fora da distribuição de treinamento e informa a capacidade de generalização do modelo a IPOs e ativos de baixa liquidez.

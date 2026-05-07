@@ -1,0 +1,15 @@
+\chapter{Diagnósticos Pré-Treino}
+\label{ap:diagnosticos}
+
+\section*{Cross-fit Posterior IC}
+
+O Cross-fit Posterior IC é o diagnóstico de validade do codificador como oráculo. O procedimento é o seguinte: para cada data $t$ do conjunto de validação, o modelo é executado em modo oráculo — o codificador recebe $x_t$ e os retornos contemporâneos $y_t$ e produz $\mu_{\text{post}}$; o decodificador usa esses fatores para produzir a previsão $\hat{y}^{(\text{post})}$; o Rank IC é calculado entre $\hat{y}^{(\text{post})}$ e os retornos realizados em $t{+}1$, que são \textit{diferentes} dos retornos usados como entrada do codificador. Se o Rank IC resultante for positivo, o codificador extrai sinal preditivo dos retornos contemporâneos — não apenas reconstrói a entrada de forma trivial. Um Posterior IC próximo de zero indicaria que o oráculo não captura informação útil e que o esquema professor-aluno não teria o que transferir ao preditor.
+
+% PLACEHOLDER: reportar o valor obtido do Posterior IC no conjunto de validação.
+
+\section*{Auditoria de Viés de Sobrevivência}
+
+A auditoria verifica que a construção point-in-time efetivamente preserva no universo de treinamento os tickers que deslistaram durante o período amostral. O procedimento consiste em calcular a distribuição da última data válida por ticker no dataset e verificar que uma fração não-negligenciável desses tickers tem última data dentro do período de treinamento (e não apenas após o final do período de teste, o que indicaria ausência de deslistamentos no dataset).
+
+% PLACEHOLDER: reportar a contagem de tickers que deslistaram dentro do período de treinamento
+% e a fração do universo que eles representam nos anos em que estavam ativos.

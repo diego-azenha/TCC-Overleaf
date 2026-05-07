@@ -1,9 +1,7 @@
 \begin{resumo}[Abstract]
 \begin{otherlanguage*}{english}
-% Editar aqui
-Your abstract here.
-% ----
+This paper replicates and evaluates FactorVAE --- a probabilistic latent factor model based on variational inference --- in the Brazilian equity market. The model learns the conditional distribution of cross-sectional returns by combining a recurrent network for feature extraction, a teacher-student scheme between encoder and predictor for latent factor learning, and a decoder with closed-form Gaussian composition for the predictive distribution. Performance is assessed along four dimensions: cross-sectional skill (Rank IC and Rank ICIR), risk-adjusted portfolio performance (TopK-Drop strategy with a one-way transaction cost of 10~bps), operational behavior (hit rate and turnover), and robustness to assets unseen during training (holdout-retrain protocol). Results are compared against four baselines of increasing complexity: Momentum, Ridge, MLP, and GRU. The asset universe, constructed point-in-time from Economatica without restriction to any index, comprises approximately 300--500 assets in the test period --- substantially smaller than the original Chinese A-share market. The central question is whether FactorVAE maintains a skill advantage over the baselines in this environment and whether that advantage survives the translation to a portfolio strategy under realistic costs.
 
-\textbf{Keywords:} \thekeywordsabstract.
+\textbf{Keywords}: \thekeywordsabstract.
 \end{otherlanguage*}
 \end{resumo}

@@ -43,6 +43,7 @@
 \usepackage{graphicx} % inclusão de gráficos e imagens
 \usepackage{microtype} % melhorias de tipografia, espaçamento e justiificação
 \usepackage{caption} % legendas
+\usepackage{booktabs} % linhas profissionais em tabelas
 \usepackage{verbatim} % trechos de códigos
 \usepackage{imakeidx} % criação de índices
 \makeindex % compilar índice
@@ -130,34 +131,32 @@
 \addbibresource{referencias.bib}
 
 % Título
-\titulo{Título do trabalho}
+\titulo{FactorVAE no Mercado Brasileiro de Ações}
 % Subtítulo
-\subtitulo{: Subtítulo se houver}
+\subtitulo{: Replicação e Avaliação de um Modelo de Fatores Latentes Probabilístico}
 % Autor (nome completo)
-\autor{Seu Nome Completo}
+\autor{Diego Fullin Azenha}
 % Ano com 4 dígitos
 \data{\the\year} % \the\year imprime o ano corrente
 % Nome da instituição
 \instituicao{Insper}
 % Nome do curso
-\curso{Nome Completo do Curso}
+\curso{Graduação em Economia}
 % Localidade da apresentação do documento
 \local{São Paulo}
 % Orientador (nome completo)
-\orientador[Orientador:]{Nome do Seu Orientador}
-% Coorientador (nome completo)
-\coorientador[Coorientador:]{Nome do Seu Coorientador}
+\orientador[Orientador:]{Ruy Monteiro Ribeiro}
 % Tipo de trabalho (TCC  / Dissertação / Tese)
-\tipotrabalho{Tipo de trabalho}
+\tipotrabalho{Trabalho de Conclusão de Curso}
 % Palavras-chaves (importante: separar por vírgulas)
-\palavraschaves{abnt, LaTeX, formatação, equações, microeconomia}
+\palavraschaves{modelos de fatores, autoencoder variacional, retornos de ações, mercado brasileiro, aprendizado de máquina, inferência variacional}
 % Palavras-chaves em inglês (importante: separar por vírgulas)
-\keywords{abnt, LaTeX, formatting, equations, microeconomics}
+\keywords{factor models, variational autoencoder, stock returns, Brazilian market, machine learning, variational inference}
 % Professores convidados (importante: separar por vírgulas)
-\professores{Adam Smith, John Maynard Keynes, Robert Lucas Jr.}
+\professores{PLACEHOLDER: membros da banca}
 
 % Preâmbulo
-\preambulo{(TCC / Dissertação / Tese) apresentado ao Curso (Graduação em Economia / Graduação em Administração / Graduação em Direito / Graduação em Engenharia (Computação/Mecânica/Mecatrônica) / Graduação em Ciência de Dados / Mestrado em Administração / LLM / Doutorado) como requisito parcial para a obtenção do título de (Bacharel / Mestre / Especialista / Pós-graduado / Doutor) em área de estudo.}
+\preambulo{Trabalho de Conclusão de Curso apresentado ao Curso de Graduação em Economia do Insper Instituto de Ensino e Pesquisa como requisito parcial para a obtenção do título de Bacharel em Economia.}
 
 % ----
 % Início do documento
@@ -202,12 +201,12 @@
 
 % Elementos textuais
 \textual
-% Capítulos do texto (incluir conforme necessidade)
+% Capítulos do texto
 \include{2-textuais/01-introducao}
-\include{2-textuais/02-estrutura-basica}
-\include{2-textuais/03-elementos-basicos}
-\include{2-textuais/04-citacoes}
-\include{2-textuais/05-conclusão}
+\include{2-textuais/02-revisao}
+\include{2-textuais/03-metodologia}
+\include{2-textuais/04-resultados}
+\include{2-textuais/05-conclusao}
 
 % Elementos pós-textuais
 \postextual
@@ -219,6 +218,9 @@
 \begin{apendicesenv}
     \partapendices
     \input{3-pos-textuais/apendices/apendice-a}
+    \input{3-pos-textuais/apendices/apendice-b}
+    \input{3-pos-textuais/apendices/apendice-c}
+    \input{3-pos-textuais/apendices/apendice-d}
 \end{apendicesenv}
 % Anexos (opcional)
 \begin{anexosenv}

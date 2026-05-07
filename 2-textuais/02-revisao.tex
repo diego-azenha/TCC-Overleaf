@@ -1,0 +1,71 @@
+\chapter{Revisão da Literatura}
+\label{cap:revisao}
+
+A revisão é deliberadamente enxuta: o capítulo entrega apenas o que o leitor precisa para acompanhar a metodologia. O lugar do \textit{FactorVAE} na evolução da modelagem fatorial, o vocabulário de inferência variacional necessário para entender sua função objetivo, a apresentação do modelo em si e os procedimentos de avaliação que serão aplicados aos resultados.
+
+\section{Modelos de Fatores: dos Observáveis aos Latentes}
+\label{sec:modelos-fatores}
+
+Modelos de fatores expressam o retorno de um ativo como combinação de exposições a fatores de risco comuns mais um componente idiossincrático. O \textit{Capital Asset Pricing Model} de \textcite{sharpe1964} introduz o caso de fator único — o excesso de retorno do portfólio de mercado — com exposições estimadas por regressão linear de séries temporais. A teoria de precificação por arbitragem de \textcite{ross1976} generaliza essa estrutura para múltiplos fatores sem exigir que o portfólio de mercado seja o único fator relevante. Em ambos os casos, a estrutura geral do modelo é:
+
+\begin{equation}
+    r_{i,t} = \alpha_i + \sum_{k=1}^{K} \beta_{i,k}\, f_{k,t} + \varepsilon_{i,t}
+    \label{eq:modelo-fatorial}
+\end{equation}
+
+\noindent em que $r_{i,t}$ é o retorno do ativo $i$ no período $t$, $f_{k,t}$ são os fatores comuns, $\beta_{i,k}$ são as exposições do ativo $i$ ao fator $k$, $\alpha_i$ é o retorno esperado não explicado pelos fatores, e $\varepsilon_{i,t}$ é o componente idiossincrático, assumido não correlacionado entre ativos e com os fatores.
+
+A segunda geração de modelos abandona a derivação de equilíbrio e constrói fatores diretamente a partir de características observáveis dos ativos. \textcite{fama1993} propõem portfólios formados com base em tamanho e índice book-to-market como proxies para fatores de risco não capturados pelo mercado. \textcite{fama2015} estendem o modelo para cinco fatores, incorporando rentabilidade e investimento. \textcite{carhart1997} adiciona um fator de momento. A lógica é a mesma: hipóteses ex-ante sobre quais características geram prêmios sistemáticos, estimação por regressão linear de painel, exposições constantes no tempo.
+
+Três limitações estruturais motivam a busca por alternativas. Primeiro, a dependência da especificação ex-ante: o modelo é tão bom quanto as hipóteses do pesquisador sobre quais características são portadoras de prêmio. Segundo, a restrição linear, que impede a captura de interações não-lineares entre características e retornos. Terceiro, a proliferação de centenas de fatores documentados sem critério de seleção sistemático — o chamado \textit{factor zoo} —, que torna arbitrária a escolha do conjunto de características.
+
+Essas limitações motivaram uma linha de pesquisa que aprende a representação fatorial diretamente dos dados. \textcite{gu2021} propõem o \textit{Conditional Autoencoder}: os fatores latentes são extraídos por um autoencoder, e as exposições são funções não-lineares aprendidas das características dos ativos. O modelo supera sistematicamente modelos lineares e redes neurais sem estrutura fatorial na previsão do \textit{cross-section} de retornos norte-americanos. A limitação é que produz estimativas pontuais: o modelo entrega o retorno esperado condicional sem modelar a distribuição condicional completa. O \textit{FactorVAE} estende essa linha ao tratar os fatores latentes como variáveis aleatórias e modelar explicitamente a incerteza sobre eles, preparando o terreno para a subseção~\ref{sec:factorvae}.
+
+\section{Variational Autoencoders}
+\label{sec:vae}
+
+O problema central dos \textit{Variational Autoencoders} (VAEs) é a estimação de um modelo generativo com variáveis latentes quando a verossimilhança marginal não admite forma fechada. Dado um vetor de observações $x$ e variáveis latentes $z$, a verossimilhança marginal $p(x) = \int p(x|z)\,p(z)\,\mathrm{d}z$ não tem solução analítica quando o decodificador $p(x|z)$ é parametrizado por uma rede neural não-linear, tornando inviável a estimação direta por máxima verossimilhança.
+
+A inferência variacional resolve esse problema introduzindo uma distribuição aproximada $q(z|x)$ — o codificador — e maximizando um limite inferior da log-verossimilhança, o ELBO (\textit{Evidence Lower Bound}):
+
+\begin{equation}
+    \log p(x) \;\geq\; \mathbb{E}_{q(z|x)}\!\left[\log p(x|z)\right] - \mathrm{KL}\!\left(q(z|x) \,\|\, p(z)\right)
+    \label{eq:elbo}
+\end{equation}
+
+\noindent O primeiro termo mede a qualidade da reconstrução de $x$ a partir das variáveis latentes $z$ amostradas da posterior; o segundo penaliza o quanto a posterior $q(z|x)$ se afasta da prior $p(z)$. O truque de reparametrização de \textcite{kingma2014} permite que o gradiente flua através da operação de amostragem ao expressar $z = \mu + \sigma \odot \epsilon$ com $\epsilon \sim \mathcal{N}(0, I)$, tornando o ELBO diferenciável com respeito aos parâmetros de ambas as redes.
+
+No caso padrão, a prior é fixa em $\mathcal{N}(0, I)$ e o termo KL tem forma fechada analítica. Quando a prior é aprendida — parametrizada por uma rede separada —, o termo KL compara duas distribuições gaussianas com parâmetros distintos, e o comportamento numérico do treinamento muda: os gradientes da prior dependem agora de uma rede que precisa ser otimizada conjuntamente com o codificador. Esse ponto é diretamente relevante para o \textit{FactorVAE}: o codificador produz uma posterior e o preditor produz uma prior, ambos aprendidos conjuntamente, e a função objetivo força a aproximação entre essas duas distribuições ao longo do treinamento.
+
+\section{O Modelo FactorVAE}
+\label{sec:factorvae}
+
+O \textit{FactorVAE} \parencite{duan2022} preserva a decomposição econômica fundamental dos modelos fatoriais: o retorno de cada ativo é a soma de um componente idiossincrático e um componente sistemático, este último escrito como combinação linear de fatores latentes. A inovação não está na decomposição em si, e sim no fato de que todos os componentes — o retorno idiossincrático esperado $\alpha$, a matriz de exposições $\beta$ e os próprios fatores $z$ — são saídas de redes neurais que processam exclusivamente informação histórica disponível antes da data de previsão. Isso elimina a dependência de hipóteses ex-ante sobre quais características são relevantes e permite que o modelo capture relações não-lineares entre características e retornos.
+
+\begin{figure}[htbp]
+    \centering
+    \fbox{\parbox{0.82\textwidth}{\centering\vspace{2.5cm}
+    {\small \textit{PLACEHOLDER} --- Diagrama geral da arquitetura do \textit{FactorVAE}.}\\[0.4cm]
+    {\small Quatro blocos: \textbf{Extrator de Características}, \textbf{Codificador},
+    \textbf{Preditor} e \textbf{Decodificador}.}\\[0.2cm]
+    {\small Fluxo de dados entre blocos, com indicação visual de quais participam}\\
+    {\small apenas do treinamento (Codificador + retornos $y_t$) e quais participam}\\
+    {\small da inferência (Extrator, Preditor, Decodificador).}\\[0.4cm]
+    {\small Adaptada de \textcite{duan2022}.}
+    \vspace{2.5cm}}}
+    \caption{Diagrama geral da arquitetura do \textit{FactorVAE}.}
+    \label{fig:factorvae-geral}
+\end{figure}
+
+O traço arquitetural que distingue o \textit{FactorVAE} de um VAE convencional é o esquema professor-aluno entre codificador e preditor. Durante o treinamento, o codificador recebe os retornos contemporâneos $y_t$ como sinal adicional e produz uma distribuição posterior $q(z|x_t, y_t)$ sobre os fatores; o preditor recebe apenas a informação histórica $x_t$ e produz uma distribuição prior $p(z|x_t)$. A função objetivo força o preditor a aprender os fatores de risco relevantes ao aproximar sua prior da posterior informada pelo oráculo. Na inferência fora da amostra, os retornos contemporâneos não estão disponíveis, e o codificador é descartado: apenas o preditor e o decodificador participam da previsão. Esse esquema é o mecanismo central do modelo; sem ele, o preditor não teria sinal suficiente para aprender os fatores latentes a partir exclusivamente de informação histórica.
+
+Uma propriedade adicional é a composição analítica gaussiana no decodificador. Sob a hipótese de que tanto o componente idiossincrático quanto os fatores têm distribuições gaussianas condicionalmente independentes, a distribuição preditiva dos retornos é também gaussiana com parâmetros em forma fechada, sem necessidade de amostragem Monte Carlo. Isso entrega não apenas o retorno esperado por ativo, mas também uma estimativa de incerteza por ativo $\sigma_y^{(i)}$, aproveitável na construção de estratégias de portfólio ajustadas ao risco.
+
+\section{Avaliação de Modelos Preditivos em Finanças}
+\label{sec:avaliacao-lit}
+
+A avaliação de modelos preditivos em finanças enfrenta um problema de dois estágios: medir a qualidade do sinal preditivo e medir a qualidade da estratégia resultante. O Rank IC é definido como a correlação de Spearman entre os retornos previstos e os retornos realizados no \textit{cross-section} em cada data $t$; o Rank ICIR é a razão entre a média e o desvio-padrão do Rank IC ao longo do tempo, capturando a consistência do sinal. Um Rank IC positivo indica que o modelo posiciona, em média, os ativos de melhor desempenho nas primeiras posições do ranking; o Rank ICIR penaliza a instabilidade temporal desse sinal.
+
+A tradução do sinal em portfólio é feita pela estratégia TopK-Drop \parencite{yang2020}: a cada data, selecionam-se os $k$ ativos com maior retorno previsto, rebalanceando a carteira com no máximo $n$ substituições por período para controlar o turnover. As métricas de portfólio avaliadas são: retorno anualizado, retorno em excesso sobre o benchmark, volatilidade anualizada, Índice de Sharpe (retorno em excesso por unidade de risco), Information Ratio (excesso anualizado dividido pelo desvio do excesso), Índice de Calmar (retorno anualizado dividido pelo drawdown máximo), drawdown máximo, hit rate (fração de períodos com retorno positivo) e turnover médio diário.
+
+A disciplina amostral é condição necessária para a validade dos resultados. Viés de sobrevivência surge quando ativos que deslistaram durante o período de análise são excluídos retroativamente do universo; a construção point-in-time elimina esse viés ao reconstruir a composição do universo disponível em cada data histórica sem informação prospectiva. Os subperíodos de validação e teste devem permanecer intocados durante a estimação do modelo: qualquer normalização, seleção de hiperparâmetros ou pré-processamento ancorado no período de teste constitui contaminação amostral. Esses são os pontos que serão cobrados nas decisões metodológicas do Capítulo~\ref{cap:metodologia}.

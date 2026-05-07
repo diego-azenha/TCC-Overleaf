@@ -1,7 +1,5 @@
 \begin{resumo}
-% Editar aqui
-Seu resumo aqui.
-% ----
+Este trabalho replica e avalia o \textit{FactorVAE} — modelo de fatores latentes probabilístico baseado em inferência variacional — no mercado brasileiro de ações. O modelo aprende a distribuição condicional dos retornos cross-sectionais combinando uma rede recorrente para extração de características, um esquema professor-aluno entre codificador e preditor para aprendizado dos fatores latentes, e um decodificador com composição gaussiana analítica para produção da distribuição preditiva em forma fechada. O desempenho é avaliado em termos de \textit{skill} cross-sectional (Rank IC e Rank ICIR), performance de portfólio ajustada ao risco (TopK-Drop com custo de transação de 10~bps \textit{one-way}), comportamento operacional (hit rate e turnover) e robustez a ativos não vistos durante o treinamento (holdout-retrain). Os resultados são comparados com quatro baselines em progressão de complexidade: Momentum, Ridge, MLP e GRU. O universo de ativos, construído ponto a ponto a partir da Economatica sem restrição ao IBX, conta com aproximadamente 300--500 ativos no período de teste — substancialmente menor do que o mercado A-share chinês original. A pergunta central é se o \textit{FactorVAE} mantém vantagem de \textit{skill} sobre os baselines nesse ambiente e se essa vantagem sobrevive à tradução em portfólio sob custos realistas.
 
-\textbf{Palavras-chaves:} \imprimirpalavraschavesresumo.
+\textbf{Palavras-chaves}: \imprimirpalavraschavesresumo.
 \end{resumo}

@@ -1,9 +1,10 @@
-\chapter{Título (Opcional)}
-Apêndice é tudo aquilo que foi \underline{produzido por quem escreveu o trabalho}, é necessário para entendimento de um argumento, fala ou dado, mas interromperia o fluxo de leitura caso fosse incluído no corpo do texto:  
+\chapter{Estabilização do Treinamento}
+\label{ap:estabilizacao}
 
-\begin{itemize}
-    \item Formulários 
-    \item Questionários 
-    \item Códigos de programação 
-    \item Etc.
-\end{itemize}
+Este apêndice documenta as decisões de implementação que afetam a estabilidade numérica do treinamento mas que sobrecarregariam o corpo principal do texto.
+
+\textbf{Agendamento do coeficiente KL.} O peso $\gamma$ do termo KL na função objetivo (Equação~\ref{eq:loss}) é agendado linearmente ao longo dos primeiros \texttt{kl\_warmup\_steps}~$= 500$ passos de otimização, iniciando em zero e atingindo o valor configurado ao final do intervalo. O aquecimento evita que o preditor seja forçado a aproximar uma posterior ainda não treinada, o que colapsaria o espaço latente nas primeiras épocas.
+
+\textbf{Free bits.} O mecanismo de \textit{free bits} — que impõe um threshold mínimo de contribuição KL por dimensão latente — foi desativado (\texttt{kl\_free\_bits}~$= 0$). Observou-se que os valores naturais de KL por fator no regime de operação normal ficam abaixo de qualquer threshold praticamente útil, de modo que ativar o mecanismo cancelaria gradientes do preditor sem benefício correspondente em termos de utilização do espaço latente.
+
+\textbf{Escala dos termos da loss.} A NLL é calculada como média sobre os $N$ ativos da cross-section (não soma), e a KL é calculada como média sobre as $K$ dimensões latentes (não soma). Essa escolha mantém os dois termos em escala compatível independentemente do tamanho da cross-section $N_t$ no dia $t$ — variável entre aproximadamente 300 e 500 ativos no período de teste — e do número de fatores $K = 16$.
