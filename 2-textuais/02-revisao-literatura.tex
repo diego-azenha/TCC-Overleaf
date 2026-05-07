@@ -20,12 +20,7 @@ onde $f_t \in \mathbb{R}^K$ representa os retornos dos $K$ fatores comuns, $B \i
 
 Condicionalmente ao vetor de fatores $f_t$, o retorno esperado de cada ativo em excesso ao intercepto é $\mathbb{E}[r_{i,t} - \alpha_i \mid f_t] = \beta_i^\top f_t$, uma combinação linear dos retornos dos fatores ponderada pelas exposições do ativo. O modelo pode ser lido como um sistema no qual um conjunto pequeno de fatores se transmite a um conjunto grande de ativos por meio dos loadings, conforme ilustrado na Figura \ref{fig:graphical_model}. Quando $B$ é esparso, como ocorre naturalmente com fatores de setor e país, cada fator conecta-se apenas a um subconjunto de ativos. Essa estrutura é o que torna o modelo parcimonioso: em vez de estimar $N(N-1)/2$ covariâncias individuais, toda a dependência cruzada é comprimida em $K \ll N$ fatores e suas respectivas exposições.
 
-\begin{figure}[h]
-\centering
-% PLACEHOLDER: Figura 4.2 de Paleologo — modelo gráfico com fatores, loadings e ativos
-\caption{Interpretação generativa do modelo fatorial: fatores propagam-se aos retornos dos ativos por meio das exposições fatoriais \textcite{paleologo2025}.}
-\label{fig:graphical_model}
-\end{figure}
+\input{figuras/graphical_model}
 
 Dessas hipóteses decorre a decomposição da covariância dos retornos. Como $\alpha$ é constante e $\varepsilon_t$ é independente de $f_t$ com média zero, a covariância de $r_t$ assume a forma
 
@@ -43,12 +38,7 @@ A estrutura fatorial descrita na seção anterior é comum a toda essa classe de
  
 Nos modelos de características, os fatores são portfólios construídos a partir de atributos observáveis das empresas. \textcite{fama1993} e \textcite{carhart1997} são os exemplos canônicos: o fator SMB (\textit{small minus big}) é um portfólio comprado em ações de baixa capitalização e vendido em ações de alta capitalização; o HML (\textit{high minus low}) replica essa estrutura para o índice valor patrimonial sobre preço; e o MOM captura a persistência de retornos recentes. As exposições de cada ativo a esses fatores são então estimadas por regressão em série temporal sobre os retornos dos portfólios. A principal vantagem dessa abordagem é a interpretabilidade: cada coluna de $B$ corresponde a um fator com significado econômico claro, e a exposição de um ativo ao fator valor, por exemplo, pode ser diretamente relacionada à sua política de precificação e aos fundamentos da empresa. Na prática, a matriz $B$ combina fatores de natureza distinta — colunas de estilo com valores contínuos padronizados, colunas de setor e país com valores binários —, o que permite decompor o risco de uma carteira em contribuições setoriais, geográficas e de estilo de forma legível (Figura \ref{fig:loadings_matrix}).
  
-\begin{figure}[h]
-\centering
-% PLACEHOLDER: Figura 4.1 de Paleologo — matriz de loadings particionada em blocos de estilo, país e setor
-\caption{Estrutura típica da matriz de exposições fatoriais $B$ em modelos de características, particionada em blocos de estilo, país e setor \textcite{paleologo2025}.}
-\label{fig:loadings_matrix}
-\end{figure}
+\input{figuras/loadings_matrix}
  
 Nos modelos estatísticos, os fatores não são definidos a priori: tanto $B$ quanto $f_t$ são extraídos diretamente dos retornos observados por análise de componentes principais ou métodos correlatos. A lógica é que os padrões de co-movimento nos dados revelam as fontes latentes de risco sem que o pesquisador precise especificá-las antecipadamente. O PCA identifica as direções de máxima variância no painel de retornos e as usa como fatores, o que garante que os componentes extraídos explicam a maior parcela possível da variância total com o menor número possível de fatores. A desvantagem é que esses componentes não têm interpretação econômica direta: o primeiro fator estatístico tipicamente se assemelha ao portfólio de mercado, mas os demais são combinações lineares abstratas dos retornos sem correspondência imediata a variáveis observáveis.
  

@@ -339,49 +339,37 @@ apresenta o conjunto completo de variáveis.
 \centering
 \caption{Variáveis de entrada do modelo}
 \label{tab:features}
-
 \begin{tabular}{ll}
 \multicolumn{2}{c}{\textit{Fundamentalistas}} \\
 \cmidrule(lr){1-2}
-\textit{Valuation / Mercado} & \textit{Rentabilidade / Caixa} \\
+\textit{Valuation / Mercado} & \textit{Rentabilidade / Alavancagem} \\
 \midrule
 P/VPA        & ROA (TTM)          \\
-EV/EBITDA    & ROE (TTM)          \\
-P/L          & Margem Bruta (TTM) \\
-Volume       & Dív. Bruta / Ativo \\
+P/L          & ROE (TTM)          \\
+Volume       & Margem Bruta (TTM) \\
+             & Dív. Bruta / Ativo \\
              & Dív. Líq. / PL     \\
-             & FCF / Dívida       \\
-             & FCF Yield          \\
 \bottomrule
 \end{tabular}
-
 \vspace{0.5em}
-
 \begin{tabular}{llll}
 \multicolumn{4}{c}{\textit{Índices Bloomberg}} \\
 \cmidrule(lr){1-4}
-\textit{Brasil / Macro} & \textit{Renda Fixa} &
-\textit{Commodities} & \textit{Internacional} \\
+\textit{Risco \& Sentimento} & \textit{Brasil} &
+\textit{Commodities \& RF} & \textit{Internacional} \\
 \midrule
-VIX        & BZRFIMAB & BCOMAGTR & MXEF  \\
-MOVE       & BZRFIMA  & BCOMGCTR & MXCN  \\
-CDS Brasil & SPUHYBDT & BCOMINTR & MXJP  \\
-DI Over    &          & BCOMNGTR & MXGB  \\
-BRL/USD    &          & BCOMSITR & MXCA  \\
-MXBRSC     &          & BCOMCOT  & MXEU  \\
-MXBRLC     &          &          & MXPCJ \\
-MXBR000V   &          &          & MXUS  \\
-IDIV       &          &          & MXLA  \\
-MLCXBV     &          &          &       \\
-MU702608   &          &          &       \\
+VIX          & DI Over   & BCOMAGTR & MXEF  \\
+MOVE         & BRL/USD   & BCOMGCTR & MXLA  \\
+CDS Brasil   & MXBRSC    & BCOMINTR & MXUS  \\
+             & MXBR000V  & SPUHYBDT &       \\
+             & IDIV      &          &       \\
 \bottomrule
 \end{tabular}
-
-\caption*{\footnotesize \textbf{Nota:} Variáveis fundamentalistas de frequência
-trimestral são propagadas para a grade diária por \textit{forward fill}. Todas
-as séries de índices entram como log-retornos diários. A classificação setorial
-($d_{static} = 11$) é codificada separadamente como vetor \textit{one-hot}.}
-\caption*{Fonte: Elaboração própria.}
+\begin{minipage}{\linewidth}
+\footnotesize
+\vspace{0.4em}
+\textit{Nota:} EV/EBITDA, FCF/Dívida e FCF Yield foram coletados mas não incluídos na versão corrente do modelo. Cada feature fundamental é acompanhada de um indicador binário de observabilidade ($d_{ts} = 24$; $d_{masks} = 23$).
+\end{minipage}
 \end{table}
 
 Os 29 índices Bloomberg cobrem cinco categorias: risco e sentimento global

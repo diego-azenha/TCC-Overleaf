@@ -1,0 +1,123 @@
+% ============================================================
+% fig_graphical_model.tex
+% Modelo gráfico generativo do modelo fatorial
+% Requer no preâmbulo: \usepackage{tikz}
+%   \usetikzlibrary{arrows.meta, positioning, calc}
+% ============================================================
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    font=\small,
+    % nó de variável latente (círculo cinza claro)
+    latent/.style={
+        circle,
+        draw=gray!60,
+        fill=gray!12,
+        line width=0.7pt,
+        minimum size=1.05cm,
+        inner sep=2pt
+    },
+    % nó de variável observada (círculo duplo / mais escuro)
+    observed/.style={
+        circle,
+        draw=gray!70,
+        fill=gray!22,
+        line width=0.7pt,
+        minimum size=1.05cm,
+        inner sep=2pt,
+        double,
+        double distance=1.5pt
+    },
+    % setas
+    arr/.style={-{Stealth[length=5pt,width=4pt]}, gray!70, line width=0.7pt},
+    % seta de loading (mais destacada)
+    loading/.style={-{Stealth[length=5pt,width=4pt]}, gray!55, line width=0.5pt},
+    % label de parâmetro nas setas
+    edgelabel/.style={font=\footnotesize, fill=white, inner sep=1.5pt,
+                      midway, sloped}
+]
+
+% ── Fatores latentes (linha superior) ───────────────────────
+\node[latent] (f1) at (0, 0)   {$f_1$};
+\node[latent] (f2) at (3, 0)   {$f_2$};
+\node[font=\small, gray] at (5.2, 0) {$\cdots$};
+\node[latent] (fk) at (6.6, 0) {$f_K$};
+
+% Label da camada
+\node[font=\small\itshape, gray!70] at (-1.8, 0) {fatores};
+
+% ── Ativos observados (linha inferior) ──────────────────────
+\node[observed] (r1) at (-0.5, -3.0) {$r_1$};
+\node[observed] (r2) at ( 2.0, -3.0) {$r_2$};
+\node[observed] (r3) at ( 4.5, -3.0) {$r_3$};
+\node[font=\small, gray] at (5.9, -3.0) {$\cdots$};
+\node[observed] (rn) at ( 7.1, -3.0) {$r_N$};
+
+% Label da camada
+\node[font=\small\itshape, gray!70] at (-1.8, -3.0) {retornos};
+
+% ── Ruído idiossincrático (linha inferior, abaixo dos ativos) ─
+\node[latent, minimum size=0.85cm] (e1) at (-0.5, -4.8) {$\varepsilon_1$};
+\node[latent, minimum size=0.85cm] (e2) at ( 2.0, -4.8) {$\varepsilon_2$};
+\node[latent, minimum size=0.85cm] (e3) at ( 4.5, -4.8) {$\varepsilon_3$};
+\node[latent, minimum size=0.85cm] (en) at ( 7.1, -4.8) {$\varepsilon_N$};
+
+% ── Setas fatores → ativos ──────────────────────────────────
+% f1 → r1 (carregamento forte)
+\draw[loading, line width=1.1pt]
+    (f1) -- node[edgelabel, xshift=-3pt]{$\beta_{11}$} (r1);
+
+% f1 → r2
+\draw[loading, line width=0.9pt]
+    (f1) -- node[edgelabel]{$\beta_{21}$} (r2);
+
+% f1 → r3 (carregamento fraco / tracejado)
+\draw[loading, dashed, opacity=0.4]
+    (f1) -- (r3);
+
+% f2 → r1 (fraco)
+\draw[loading, dashed, opacity=0.4]
+    (f2) -- (r1);
+
+% f2 → r2
+\draw[loading, line width=0.9pt]
+    (f2) -- node[edgelabel]{$\beta_{22}$} (r2);
+
+% f2 → r3 (forte)
+\draw[loading, line width=1.1pt]
+    (f2) -- node[edgelabel]{$\beta_{32}$} (r3);
+
+% fk → rn
+\draw[loading, line width=1.1pt]
+    (fk) -- node[edgelabel]{$\beta_{NK}$} (rn);
+
+% fk → r3 (fraco)
+\draw[loading, dashed, opacity=0.4]
+    (fk) -- (r3);
+
+% ── Setas ε → ativos ────────────────────────────────────────
+\draw[arr] (e1) -- (r1);
+\draw[arr] (e2) -- (r2);
+\draw[arr] (e3) -- (r3);
+\draw[arr] (en) -- (rn);
+
+% ── Legenda ─────────────────────────────────────────────────
+\node[font=\footnotesize, gray!80, align=left] at (3.3, -5.9) {%
+    \raisebox{2pt}{\tikz{\draw[loading, line width=1.1pt, -stealth](0,0)--(0.7,0);}}~
+    exposição fatorial $\beta_{ik}$ \quad
+    \raisebox{2pt}{\tikz{\draw[loading, dashed, opacity=0.5, -stealth](0,0)--(0.7,0);}}~
+    exposição nula (esparsidade) \quad
+    \raisebox{2pt}{\tikz{\draw[arr, -stealth](0,0)--(0.7,0);}}~
+    ruído idiossincrático $\varepsilon_i$%
+};
+
+\end{tikzpicture}
+\caption{Interpretação generativa do modelo fatorial: um conjunto de $K$ fatores
+latentes $f_k$ propaga-se aos retornos dos $N$ ativos por meio das exposições
+fatoriais $\beta_{ik}$, enquanto o componente idiossincrático $\varepsilon_i$
+captura a variação não explicada pelos fatores comuns e não se propaga entre
+ativos. Setas tracejadas indicam exposições nulas, ilustrando a esparsidade
+natural de modelos com fatores de setor e país \parencite{paleologo2025}.}
+\label{fig:graphical_model}
+\end{figure}

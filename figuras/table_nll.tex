@@ -1,15 +1,21 @@
+% ============================================================
+% Tabela 2 — Negative Log-Likelihood
+% ============================================================
 \begin{table}[H]
 \centering
-\caption{Negative Log-Likelihood — Validação}
+\caption{Negative Log-Likelihood — Conjunto de Teste}
 \label{tab:nll}
 \begin{tabular}{lcccc}
 \hline
-\textbf{Modelo} & \textbf{NLL\textsubscript{joint} (média)} & \textbf{NLL\textsubscript{joint} (dp)} & \textbf{NLL\textsubscript{ind} (média)} & \textbf{NLL\textsubscript{ind} (dp)} \\
+\textbf{Modelo}
+  & \textbf{NLL\textsubscript{joint} (média)}
+  & \textbf{NLL\textsubscript{joint} (dp)}
+  & \textbf{NLL\textsubscript{ind} (média)}
+  & \textbf{NLL\textsubscript{ind} (dp)} \\
 \hline
-NeuralFactors & 11.614,25 & 2.017,63 & 118,57 & 20,61 \\
-PPCA          &     67,52 &    23,03 &   0,73 &  0,25 \\
+NeuralFactors & 174{,}586 &  43{,}253 & 1{,}291 & 0{,}318 \\
+PPCA          & 222{,}720 & 273{,}090 & 0{,}898 & 1{,}123 \\
 \hline
 \end{tabular}
-\caption*{\footnotesize \textbf{Nota:} Os resultados apresentados nesta tabela foram obtidos a partir de uma versão preliminar da base de dados, sujeita às limitações descritas na Seção 3.4. Em particular, a discrepância de escala entre os dois modelos e a diferença no número de datas avaliadas refletem inconsistências no pipeline de dados ainda não corrigidas. Esses valores não devem ser interpretados como indicativos do desempenho real dos modelos. Resultados revisados serão apresentados na versão final do trabalho.}
 \caption*{Fonte: Elaboração própria.}
 \end{table}

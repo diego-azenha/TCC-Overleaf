@@ -1,15 +1,22 @@
+% ============================================================
+% Tabela 1 — Desempenho do Backtest de Portfólio
+% ============================================================
 \begin{table}[H]
 \centering
-\caption{Desempenho do Backtest de Portfólio — Validação}
+\caption{Desempenho do Backtest de Portfólio — Conjunto de Teste}
 \label{tab:sharpe}
 \begin{tabular}{lccccc}
 \hline
-\textbf{Modelo} & \textbf{Retorno Total} & \textbf{Retorno Anual} & \textbf{Vol. Anual} & \textbf{Sharpe} & \textbf{Drawdown Máx.} \\
+\textbf{Modelo}
+  & \textbf{Retorno Total}
+  & \textbf{Retorno Anual}
+  & \textbf{Vol. Anual}
+  & \textbf{Sharpe}
+  & \textbf{Drawdown Máx.} \\
 \hline
-NeuralFactors &  4,60\% &  1,61\% & 33,60\% &  0,048 & -44,21\% \\
-PPCA          & -1,34\% & -6,55\% & 15,34\% & -0,427 &  -6,84\% \\
+NeuralFactors & $-$12{,}17\% & $-$3{,}98\% & 21{,}12\% & $-$0{,}19 & $-$35{,}18\% \\
+PPCA          &    15{,}67\% &   4{,}66\%  & 10{,}72\% &    0{,}43 & $-$13{,}01\% \\
 \hline
 \end{tabular}
-\caption*{\footnotesize \textbf{Nota:} Os resultados de backtest apresentados refletem o estado atual da base de dados preliminar e não devem ser interpretados como avaliação definitiva do desempenho econômico dos modelos. A volatilidade anualizada do NeuralFactors (33,6\%) é consideravelmente elevada e provavelmente decorre de inconsistências nos dados de entrada. Resultados revisados, obtidos sobre base de dados tratada, serão apresentados na versão final do trabalho.}
 \caption*{Fonte: Elaboração própria.}
 \end{table}

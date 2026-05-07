@@ -1,17 +1,26 @@
+% ============================================================
+% Tabela 3 — Calibração do Value at Risk
+% ============================================================
 \begin{table}[H]
 \centering
-\caption{Erro de Calibração do Value at Risk — Validação}
+\caption{Erro de Calibração do Value at Risk — Conjunto de Teste}
 \label{tab:var}
 \begin{tabular}{lcccccc}
 \hline
- & \multicolumn{2}{c}{\textbf{q = 1\%}} & \multicolumn{2}{c}{\textbf{q = 5\%}} & \multicolumn{2}{c}{\textbf{q = 10\%}} \\
+ & \multicolumn{2}{c}{\textbf{q = 1\%}}
+ & \multicolumn{2}{c}{\textbf{q = 5\%}}
+ & \multicolumn{2}{c}{\textbf{q = 10\%}} \\
 \cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
-\textbf{Modelo} & \textbf{Erro} & \textbf{Emp.} & \textbf{Erro} & \textbf{Emp.} & \textbf{Erro} & \textbf{Emp.} \\
+\textbf{Modelo}
+  & \textbf{Erro} & \textbf{Emp.}
+  & \textbf{Erro} & \textbf{Emp.}
+  & \textbf{Erro} & \textbf{Emp.} \\
 \hline
-NeuralFactors & 0,4156 & 0,4256 & 0,3871 & 0,4371 & 0,3493 & 0,4493 \\
-PPCA          & 0,0094 & 0,0194 & 0,0048 & 0,0452 & 0,0216 & 0,0784 \\
+NeuralFactors & 0{,}0023 & 0{,}0123 & 0{,}0070 & 0{,}0570 & 0{,}0097 & 0{,}1097 \\
+PPCA          & 0{,}0023 & 0{,}0123 & 0{,}0173 & 0{,}0327 & 0{,}0402 & 0{,}0598 \\
 \hline
 \end{tabular}
-\caption*{\footnotesize \textbf{Nota:} Os erros de calibração do NeuralFactors apresentados nesta tabela são manifestamente inconsistentes com o desempenho esperado do modelo — erros da magnitude observada (0,35–0,42) indicam falha no pipeline de dados e não refletem a qualidade probabilística real do modelo. A título de referência, um modelo bem calibrado deveria apresentar erros próximos de zero para todos os quantis. Esses resultados serão revisados na versão final do trabalho.}
-\caption*{Fonte: Elaboração própria.}
+\caption*{%
+  \textit{Erro} = $|\hat{q}_{\text{emp}} - q|$, onde $\hat{q}_{\text{emp}}$ é a taxa de violação empírica.
+  Fonte: Elaboração própria.}
 \end{table}
