@@ -6,7 +6,7 @@
 % com a NLL de modelos sem inferência variacional seria metodologicamente inválido.
 % Diagnósticos de treinamento estão no Apêndice~\ref{ap:estabilizacao}.
 
-\section{Qualidade do Sinal Preditivo}
+\section{Sinal Preditivo}
 \label{sec:resultados-skill}
 
 \begin{itemize}
@@ -15,6 +15,7 @@
     \item Discutir o quanto o ganho em IC se traduz em ICIR: se o GRU for competitivo em ICIR apesar de inferior em IC, o \textit{FactorVAE} tem sinal mais forte mas menos estável --- importante para a interpretação do portfólio.
     \item Magnitude da vantagem sobre Momentum e Ridge: consistente mas não dramática (esperado dado o universo restrito e o menor volume de dados em relação ao estudo original).
     \item Resultado afirmado sem hedging: descrever exatamente o que os dados mostram, mesmo se a vantagem for pequena.
+    \item \textbf{Comparação com \textcite{duan2022}:} discutir se a vantagem qualitativa em Rank IC se reproduz, mesmo que com magnitudes menores; se ICIR for mais instável do que no artigo original, reconhecer e atribuir a universo menor e menor liquidez.
 \end{itemize}
 
 \begin{table}[htbp]
@@ -35,7 +36,7 @@
     \fonte{Elaboração própria.}
 \end{table}
 
-\section{Performance de Carteira após Custos}
+\section{Backtest}
 \label{sec:resultados-performance}
 
 \begin{itemize}
@@ -44,6 +45,7 @@
     \item \textbf{Ponto 2 --- Ausência (ou não) de retorno absoluto acima do EW Market:} confrontar o ganho de Sharpe com o retorno em excesso sobre o benchmark igual-ponderado após custos; se o excesso anualizado for próximo de zero, discutir por que isso pode coexistir com Sharpe superior (menor volatilidade, não maior retorno).
     \item \textbf{Ponto 3 --- Drawdown e Calmar:} avaliar controle de risco de cauda; o \textit{FactorVAE} entrega menor drawdown máximo do que os baselines?
     \item Resultado central: afirmado claramente e sem omissão --- incluindo se o alfa líquido após custos não se materializa.
+    \item \textbf{Comparação com \textcite{duan2022}:} alfa líquido próximo de zero no Brasil contrasta com alfa positivo reportado no artigo original; quantificar a diferença e relacionar ao universo $\approx 10\times$ menor e à proporção TopK maior.
 \end{itemize}
 
 \begin{table}[htbp]
@@ -88,14 +90,15 @@
     \label{fig:retorno-excesso}
 \end{figure}
 
-\section{Robustez a Ativos Não Vistos}
+\section{Robustez}
 \label{sec:resultados-robustez}
 
 \begin{itemize}
     \item Apresentar a Tabela~\ref{tab:robustez} com os resultados do protocolo holdout-retrain para $m \in \{10, 50\}$ ativos retidos.
     \item Discutir a magnitude da degradação do Rank IC nos tickers retidos vs.\ o Rank IC de universo completo: queda pequena indica generalização robusta; queda grande indica forte dependência de histórico de treinamento.
     \item Implicação prática para IPOs e ativos pouco líquidos: se a degradação for pequena, o modelo pode ser aplicado a ativos recém-listados sem retreinamento imediato.
-    \item O compartilhamento de pesos entre ativos no Extrator de Características é o mecanismo que deveria garantir generalização --- os resultados confirmam ou contradizem essa expectativa teórica?
+    \item O compartilhamento de pesos entre ativos no Feature Extractor é o mecanismo que deveria garantir generalização --- os resultados confirmam ou contradizem essa expectativa teórica?
+    \item \textbf{Comparação com \textcite{duan2022}:} \textcite{duan2022} reportam degradação limitada em holdout; verificar se o mesmo padrão se reproduz no universo brasileiro, dado que com $\approx 130$ ativos a retirada de 50 representa fração maior do universo.
 \end{itemize}
 
 \begin{table}[htbp]
@@ -108,53 +111,6 @@
         \midrule
         $m = 10$  & ---  & ---  & ---  & ---  \\
         $m = 50$  & ---  & ---  & ---  & ---  \\
-        \bottomrule
-    \end{tabular}
-    \fonte{Elaboração própria.}
-\end{table}
-
-\section{Confronto com o Artigo Original}
-\label{sec:resultados-confronto}
-
-\begin{itemize}
-    \item \textbf{Onde confirma \textcite{duan2022}:}
-    \begin{itemize}
-        \item Vantagem em IC: o \textit{FactorVAE} supera baselines lineares e neurais em Rank IC médio, replicando o resultado qualitativo central do artigo original.
-        \item Ganho de Sharpe: a superioridade em IC se traduz em portfólio com melhor ajuste risco-retorno, coerente com \textcite{duan2022}.
-        \item Robustez holdout: a degradação em ativos não vistos é limitada, confirmando a capacidade de generalização pela estrutura de pesos compartilhados.
-    \end{itemize}
-    \item \textbf{Onde discorda (ou magnitudes diferem):}
-    \begin{itemize}
-        \item Magnitudes menores: Rank IC e retorno em excesso são substancialmente inferiores aos reportados para o mercado A-share --- diferença esperada dado o universo $\approx 10\times$ menor.
-        \item Alfa líquido próximo de zero: o excesso de retorno sobre o benchmark EW Market após custos de 10~bps não é significativo, enquanto o artigo original reporta alfa positivo -- pode refletir universo menor, menor diversificação e custos relativamente maiores.
-        \item Estabilidade do ICIR: variabilidade temporal do IC é maior no contexto brasileiro, possivelmente refletindo menor liquidez e maior concentração setorial.
-    \end{itemize}
-    \item \textbf{Hipóteses para as discordâncias:}
-    \begin{itemize}
-        \item \textbf{Universo restrito:} $\approx 400$ ativos vs.\ $>3.000$ no artigo original --- sinal de diversificação e profundidade do cross-section são fundamentalmente diferentes.
-        \item \textbf{Concentração setorial:} bolsa brasileira fortemente concentrada em commodities, financeiro e energia; covariância alta entre ativos reduz diversificação efetiva do portfólio TopK.
-        \item \textbf{Características exclusivamente técnicas:} ausência de fatores fundamentalistas (P/L, ROE, alavancagem) que o artigo original inclui; pode empobrecer o sinal preditivo em horizontes mais longos.
-        \item \textbf{Regime macroeconômico:} período de teste cobre pandemia 2020, aperto monetário 2021--22 e mudança de governo 2023 --- choques idiossincráticos ao mercado brasileiro sem paralelo no período chinês original.
-        \item \textbf{Volume de dados de treinamento:} menor janela histórica e menor cross-section por data reduzem o número de observações efetivas e podem dificultar convergência do codificador.
-    \end{itemize}
-\end{itemize}
-
-% NOTA: a Tabela~\ref{tab:operacional} (hit rate e turnover) é reportada abaixo como
-% material de apoio à discussão operacional da estratégia TopK-Drop.
-
-\begin{table}[htbp]
-    \centering
-    \caption{Métricas operacionais da estratégia TopK-Drop no período de teste.}
-    \label{tab:operacional}
-    \begin{tabular}{lcc}
-        \toprule
-        \textbf{Modelo}    & \textbf{Hit Rate} & \textbf{Turnover Médio Diário} \\
-        \midrule
-        \textbf{FactorVAE} & ---               & ---                            \\
-        Momentum           & ---               & ---                            \\
-        Linear (Ridge)     & ---               & ---                            \\
-        MLP                & ---               & ---                            \\
-        GRU                & ---               & ---                            \\
         \bottomrule
     \end{tabular}
     \fonte{Elaboração própria.}

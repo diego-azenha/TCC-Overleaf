@@ -1,84 +1,23 @@
 \chapter{Metodologia}
 \label{cap:metodologia}
 
-\section{O Modelo FactorVAE}
-\label{sec:modelo-factorvae}
-
-\subsection{Formulação e Notação}
-\label{subsec:formulacao-notacao}
-
-\begin{itemize}
-    \item \textbf{Cross-section e notação:} em cada data $t$, há $N_t$ ativos disponíveis ($\approx 300$--$500$ no período de teste); o vetor de retornos realizados é $r_t \in \mathbb{R}^{N_t}$; o tensor de características históricas é $x_t \in \mathbb{R}^{N_t \times T \times C}$, com $T = 20$ dias de janela temporal e $C = 20$ características por ativo por período.
-    \item \textbf{Variável-alvo:} retorno logarítmico de $t{+}1$ para $t{+}2$ --- um passo à frente relativo ao fechamento observado em $t$; o alinhamento temporal elimina look-ahead (detalhes na Subseção~\ref{subsec:universo-periodo}).
-    \item \textbf{Equação geral do modelo dinâmico de fatores:}
-\end{itemize}
-
-\begin{equation}
-    r_{t+1} = \alpha(x_t) + \beta(x_t)\, z_{t+1} + \varepsilon_{t+1}
-    \label{eq:decomp-fatorial}
-\end{equation}
-
-\begin{itemize}
-    \item[] em que $\alpha(x_t) \in \mathbb{R}^{N_t}$ é o vetor de componentes idiossincráticos esperados, $\beta(x_t) \in \mathbb{R}^{N_t \times K}$ é a matriz de exposições fatoriais, $z_{t+1} \in \mathbb{R}^K$ é o vetor de fatores latentes e $\varepsilon_{t+1}$ é o resíduo idiossincrático. Todas as três quantidades são funções aprendidas de $x_t$.
-    \item \textbf{Parâmetros de dimensão:} $K = 16$ fatores latentes, $M = 64$ portfólios internos do codificador, dimensão oculta $H$ especificada no Apêndice~\ref{ap:hiperparametros}. Escolhas seguem \textcite{duan2022} para comparabilidade direta.
-    \item \textbf{Pesos compartilhados entre ativos:} todas as redes processam cada ativo de forma independente com pesos compartilhados --- isso é o que permite generalizar para ativos não vistos durante o treinamento, conforme avaliado na Subseção~\ref{subsec:avaliacao-robustez}.
-\end{itemize}
-
-\subsection{Caminho de Inferência}
-\label{subsec:caminho-inferencia}
-
-O caminho de inferência é o fluxo que opera fora da amostra, com acesso apenas a informação disponível até $t$.
-
-\begin{itemize}
-    \item \textbf{Histórico $\to$ embeddings (Extrator de Características):} para cada ativo $i$, uma projeção linear seguida de GRU \parencite{cho2014} processa a janela $x_t^{(i)} \in \mathbb{R}^{T \times C}$ e produz o embedding $e^{(i)} \in \mathbb{R}^H$ --- representação compacta do padrão temporal relevante; pesos compartilhados entre ativos.
-    \item \textbf{Embeddings $\to$ preditor (Preditor de Fatores):} $K = 16$ cabeças de atenção independentes agregam os embeddings com pesos baseados em similaridade cosseno (gate ReLU) e projetam nos parâmetros da distribuição prior $p(z|x_t) = \mathcal{N}(\mu_{\text{prior}}, \mathrm{diag}(\sigma_{\text{prior}}^2))$.
-    \item \textbf{Preditor $\to$ decodificador $\to$ distribuição preditiva (Decodificador):} os parâmetros $\mu_{\text{prior}}$ e $\sigma_{\text{prior}}$ são combinados com os embeddings para produzir a distribuição preditiva por ativo. Sob independência condicional gaussiana, média e variância têm forma fechada:
-\end{itemize}
-
-\begin{align}
-    \mu_y^{(i)} &= \mu_\alpha^{(i)} + \beta^{(i)\top}\, \mu_{\text{prior}} \label{eq:mu-preditivo} \\
-    \sigma_y^{(i)} &= \sqrt{\left(\sigma_\alpha^{(i)}\right)^2 + \sum_{k=1}^{K} \left(\beta^{(i,k)}\right)^2 \left(\sigma_{\text{prior}}^{(k)}\right)^2} \label{eq:sigma-preditivo}
-\end{align}
-
-\begin{itemize}
-    \item \textbf{Estimativa de risco como subproduto:} $\sigma_y^{(i)}$ (Equação~\ref{eq:sigma-preditivo}) é a incerteza preditiva por ativo entregue em forma fechada, sem Monte Carlo --- aproveitável na construção de estratégias ajustadas ao risco (Capítulo~\ref{cap:conclusao}).
-    \item \textbf{O codificador não participa da inferência:} o codificador depende dos retornos contemporâneos $y_t$, indisponíveis no momento da previsão; existe apenas durante o treinamento.
-\end{itemize}
-
-% PLACEHOLDER: figura do fluxo de inferência --- diagrama mostrando os três blocos ativos
-% na inferência (Extrator -> Preditor -> Decodificador) com indicação das dimensões dos
-% tensores em cada etapa. Elaboração própria.
-
-\subsection{Caminho de Treino}
-\label{subsec:caminho-treino}
-
-\begin{itemize}
-    \item \textbf{Codificador (com acesso a retornos contemporâneos):} recebe os embeddings $\{e^{(i)}\}$ e os retornos contemporâneos $y_t \in \mathbb{R}^{N_t}$; uma \textit{PortfolioLayer} constrói $M = 64$ portfólios cujos pesos dependem dos embeddings (não dos retornos); a \textit{MappingLayer} projeta os retornos dos portfólios nos parâmetros da posterior $q(z|x_t, y_t) = \mathcal{N}(\mu_{\text{post}}, \mathrm{diag}(\sigma_{\text{post}}^2))$.
-    \item \textbf{Esquema prior-posterior:} durante o treino, a posterior (codificador, informada pelos retornos contemporâneos) funciona como professor; a prior (preditor, apenas histórico) funciona como aluno. A função objetivo força a prior a se aproximar da posterior --- mecanismo que transfere o sinal preditivo do oráculo ao preditor.
-    \item \textbf{Função objetivo (negativo do ELBO adaptado):}
-\end{itemize}
-
-\begin{equation}
-    \mathcal{L}(x, y) = \underbrace{-\frac{1}{N}\sum_{i=1}^{N} \log p_{\phi_{\text{dec}}}\!\left(y^{(i)} \;\middle|\; x,\, z_{\text{post}}\right)}_{\text{NLL (qualidade de reconstrução)}} + \;\gamma \cdot \underbrace{\mathrm{KL}\!\left(q_{\phi_{\text{enc}}}(z|x,y) \;\|\; p_{\phi_{\text{pred}}}(z|x)\right)}_{\text{regularização (prior-posterior)}}
-    \label{eq:loss}
-\end{equation}
-
-\begin{itemize}
-    \item \textbf{Interpretação dos termos:} NLL (média sobre $N$ ativos) mede a qualidade da previsão dos retornos contemporâneos via posterior; KL (média sobre $K$ dimensões latentes) força o preditor a aprender fatores consistentes com o oráculo. A função objetivo é consequência da arquitetura, não ponto de partida.
-    \item \textbf{Hiperparâmetro $\gamma$:} controla o peso relativo da regularização; agendamento linear durante os primeiros 500 passos (\textit{KL warmup}) e decisões de estabilização numérica documentados no Apêndice~\ref{ap:estabilizacao}.
-    \item \textbf{Otimizador:} Adam, \textit{learning rate} $3 \times 10^{-4}$, \textit{weight decay} $10^{-4}$; \textit{batch} de uma cross-section por passo; \textit{early stopping} monitorando Rank IC de validação com paciência de 10 épocas.
-    \item \textbf{Validade do esquema:} o diagnóstico de Posterior IC (Apêndice~\ref{ap:diagnosticos}) verifica que o codificador captura sinal preditivo genuíno dos retornos contemporâneos --- não apenas reconstrói a entrada trivialmente.
-\end{itemize}
-
 \section{Dados}
 \label{sec:dados}
 
-\subsection{Universo, Período e Variável-Alvo}
-\label{subsec:universo-periodo}
+\subsection{Universo}
+\label{subsec:universo}
 
 \begin{itemize}
-    \item \textbf{Critérios de inclusão na B3:} todos os tickers com \textit{pricing} válido na Economatica, sem restrição a índices de referência (IBX ou similares); ticker incluído na cross-section da data $t$ se e somente se apresenta $T = 20$ dias úteis consecutivos sem lacuna calendárica superior a 7 dias (tolerância para feriados nacionais); preço mínimo de R\$~0{,}10 (exclui penny stocks); retorno diário absoluto máximo de 50\% (exclui eventos de split não ajustado e erros de dados).
-    \item \textbf{Tamanho do universo:} $\approx 300$--$500$ ativos no período de teste --- substancialmente menor do que o mercado A-share chinês original ($>3.000$); diferença estrutural que condiciona a interpretação de todas as métricas de portfólio e a comparação de magnitudes com o artigo original.
+    \item \textbf{Critérios de inclusão na B3:} todos os tickers com \textit{pricing} válido na Economatica, sem restrição a índices de referência (IBX ou similares); ticker incluído na \textit{cross-section} da data $t$ se e somente se apresenta $T = 20$ dias úteis consecutivos sem lacuna calendárica superior a 7 dias (tolerância para feriados nacionais); preço mínimo de R\$~0{,}10 (exclui \textit{penny stocks}); retorno diário absoluto máximo de 50\% (exclui eventos de \textit{split} não ajustado e erros de dados).
+    \item \textbf{Tamanho do universo:} $\approx 130$ ativos disponíveis por \textit{cross-section} no período de teste --- substancialmente menor do que o mercado A-share chinês original ($>3.000$); diferença estrutural que condiciona a interpretação de todas as métricas de portfólio e a comparação de magnitudes com o artigo original.
+    \item \textbf{Pesos compartilhados entre ativos:} todas as redes do modelo processam cada ativo de forma independente com pesos compartilhados --- isso é o que permite generalizar para ativos não vistos durante o treinamento, conforme avaliado na Seção~\ref{sec:resultados-robustez}.
+    \item \textbf{Auditoria de viés de sobrevivência:} a construção \textit{point-in-time} reconstrói a composição do universo disponível em cada data histórica sem informação prospectiva, preservando tickers que deslistaram durante o período amostral; protocolo documentado no Apêndice~\ref{ap:diagnosticos}.
+\end{itemize}
+
+\subsection{Período}
+\label{subsec:periodo}
+
+\begin{itemize}
     \item \textbf{Partição treino / validação / teste (sem sobreposição temporal):}
     % PLACEHOLDER: definir datas exatas após consolidar o dataset.
     % Estrutura esperada:
@@ -87,15 +26,15 @@ O caminho de inferência é o fluxo que opera fora da amostra, com acesso apenas
     %   Teste:       [data_inicio_teste] a [data_fim_teste]
     % O período de teste deve cobrir pelo menos: pandemia 2020, aperto monetário 2021--2022,
     % mudança de governo 2023.
-    \item \textbf{Variável-alvo e cuidados contra look-ahead:} retorno logarítmico $r_{t+1} = \ln(P_{t+2}/P_{t+1})$ --- calculado com preços de fechamento dois dias à frente; o modelo treinado na data $t$ recebe como entrada apenas características calculadas até $t$; as estatísticas de normalização (médias e desvios-padrão) são calculadas exclusivamente sobre o período de treinamento e aplicadas sem re-estimação aos períodos de validação e teste.
-    \item \textbf{Auditoria de viés de sobrevivência:} a construção point-in-time reconstrói a composição do universo disponível em cada data histórica sem informação prospectiva, preservando tickers que deslistaram durante o período amostral; protocolo documentado no Apêndice~\ref{ap:diagnosticos}.
+    \item \textbf{Variável-alvo:} retorno logarítmico $r_{t+1} = \ln(P_{t+2}/P_{t+1})$ --- um passo à frente em relação ao fechamento observado em $t$; é o $y^{(i)}$ que aparece dentro da NLL na Subseção~\ref{subsec:funcao-objetivo}. O alinhamento temporal garante que o modelo treinado na data $t$ recebe como entrada apenas características calculadas até $t$.
+    \item \textbf{Cuidados contra look-ahead:} as estatísticas de normalização (médias e desvios-padrão) são calculadas exclusivamente sobre o período de treinamento e aplicadas sem re-estimação aos períodos de validação e teste.
 \end{itemize}
 
-\subsection{Características e Pré-processamento}
-\label{subsec:caracteristicas-preprocessing}
+\subsection{Características}
+\label{subsec:caracteristicas}
 
 \begin{itemize}
-    \item \textbf{Conjunto de $C = 20$ características técnicas:} calculadas a partir de preço e volume, organizadas em seis categorias --- retornos (5), volatilidade (4), volume (3), indicadores técnicos (3), momentos superiores (2) e iliquidez (1); justificativa para o subconjunto: disponibilidade na Economatica, representatividade das categorias de sinal e alinhamento com \textcite{duan2022}. Fórmulas detalhadas no Apêndice~\ref{ap:caracteristicas}.
+    \item \textbf{Conjunto de $C = 20$ características técnicas:} calculadas a partir de preço e volume, organizadas em seis categorias --- retornos (5), volatilidade (4), volume (3), indicadores técnicos (3), momentos superiores (2) e iliquidez (1); disponibilidade na Economatica e representatividade das categorias de sinal como critérios de seleção. Fórmulas detalhadas no Apêndice~\ref{ap:caracteristicas}.
 \end{itemize}
 
 \begin{table}[htbp]
@@ -120,37 +59,138 @@ O caminho de inferência é o fluxo que opera fora da amostra, com acesso apenas
     \fonte{Elaboração própria. Fórmulas detalhadas no Apêndice~\ref{ap:caracteristicas}.}
 \end{table}
 
+\subsection{Pré-processamento}
+\label{subsec:preprocessamento}
+
 \begin{itemize}
-    \item \textbf{Winsorização:} cada característica é winsorizada cross-sectionalmente a $[p_1, p_{99}]$ a cada data --- valores extremos substituídos pelos percentis 1 e 99 do cross-section naquela data; evita que outliers distorçam os embeddings.
-    \item \textbf{Normalização cross-sectional:} \textit{z-score} sobre os $N_t$ ativos disponíveis na data $t$, calculado separadamente para cada característica; as estatísticas de normalização são estimadas apenas sobre o período de treinamento e aplicadas sem re-estimação a validação e teste.
+    \item \textbf{Winsorização:} cada característica é winsorizada \textit{cross-sectionalmente} a $[p_1, p_{99}]$ a cada data --- valores extremos substituídos pelos percentis 1 e 99 do \textit{cross-section} naquela data; evita que \textit{outliers} distorçam os \textit{embeddings}.
+    \item \textbf{Normalização cross-sectional:} \textit{z-score} sobre os $N_t$ ativos disponíveis na data $t$, calculado separadamente para cada característica; estatísticas estimadas apenas sobre o período de treinamento e aplicadas sem re-estimação a validação e teste.
+    \item \textbf{Tensor de entrada:} após o pré-processamento, cada ativo $i$ na data $t$ é representado por uma janela $x_t^{(i)} \in \mathbb{R}^{T \times C}$, com $T = 20$ dias e $C = 20$ características; o tensor completo do \textit{cross-section} é $x_t \in \mathbb{R}^{N_t \times T \times C}$.
 \end{itemize}
 
-\section{Procedimento de Avaliação}
+\section{Modelo}
+\label{sec:modelo}
+
+O \textit{FactorVAE} \parencite{duan2022} modela os retornos de cada ativo como soma de um componente idiossincrático e um componente sistemático linear nos fatores latentes:
+
+\begin{equation}
+    r_{t+1} = \alpha(x_t) + \beta(x_t)\, z_{t+1} + \varepsilon_{t+1}
+    \label{eq:decomp-fatorial}
+\end{equation}
+
+em que $\alpha(x_t) \in \mathbb{R}^{N_t}$ é o vetor de componentes idiossincráticos esperados, $\beta(x_t) \in \mathbb{R}^{N_t \times K}$ é a matriz de exposições fatoriais, $z_{t+1} \in \mathbb{R}^K$ é o vetor de fatores latentes e $\varepsilon_{t+1}$ é o resíduo idiossincrático. Todas as três quantidades são funções aprendidas de $x_t$. O modelo é composto por quatro blocos descritos a seguir; hiperparâmetros de dimensão ($K = 16$ fatores, $M = 64$ portfólios internos, dimensão oculta $H$) estão no Apêndice~\ref{ap:hiperparametros}.
+
+% PLACEHOLDER: figura da arquitetura completa --- quatro blocos (Feature Extractor,
+% Factor Encoder, Factor Predictor, Factor Decoder) com indicação visual dos caminhos
+% de treino (todos os quatro + retornos contemporâneos $y_t$) vs.\ inferência (apenas
+% Feature Extractor, Factor Predictor, Factor Decoder). Adaptada de \textcite{duan2022}.
+
+\subsection{Feature Extractor}
+\label{subsec:feature-extractor}
+
+Opera em treino e inferência --- é o único bloco que acessa diretamente o tensor de entrada $x_t$.
+
+\begin{itemize}
+    \item \textbf{Arquitetura:} projeção linear seguida de GRU \parencite{cho2014}; processa a janela $x_t^{(i)} \in \mathbb{R}^{T \times C}$ de cada ativo $i$ de forma independente e produz o \textit{embedding} $e^{(i)} \in \mathbb{R}^H$.
+    \item \textbf{Pesos compartilhados:} o mesmo conjunto de pesos processa todos os $N_t$ ativos; essa propriedade é o mecanismo que permite generalização a ativos não vistos durante o treinamento.
+    \item \textbf{Saída:} conjunto de \textit{embeddings} $\{e^{(i)}\}_{i=1}^{N_t}$ --- representações compactas dos padrões temporais relevantes de cada ativo; entrada dos três blocos subsequentes.
+\end{itemize}
+
+\subsection{Factor Encoder}
+\label{subsec:factor-encoder}
+
+Opera apenas durante o treinamento. Recebe os \textit{embeddings} do Feature Extractor e os retornos contemporâneos $y_t \in \mathbb{R}^{N_t}$ --- informação disponível no treino mas indisponível na inferência.
+
+\begin{itemize}
+    \item \textbf{\textit{PortfolioLayer}:} constrói $M = 64$ portfólios internos cujos pesos dependem dos \textit{embeddings} (não diretamente dos retornos); os retornos dos portfólios capturam o sinal sistemático presente em $y_t$.
+    \item \textbf{\textit{MappingLayer}:} projeta os retornos dos portfólios nos parâmetros da distribuição posterior dos fatores latentes: $q(z \mid x_t, y_t) = \mathcal{N}(\mu_{\text{post}},\, \mathrm{diag}(\sigma_{\text{post}}^2))$.
+    \item \textbf{Papel no esquema professor-aluno:} funciona como professor --- com acesso ao oráculo $y_t$, produz uma posterior informada sobre os fatores latentes; a função objetivo (Subseção~\ref{subsec:funcao-objetivo}) força o Factor Predictor (aluno) a imitar essa posterior usando apenas o histórico.
+\end{itemize}
+
+\subsection{Factor Predictor}
+\label{subsec:factor-predictor}
+
+Opera durante a inferência e, como aluno, durante o treinamento. Recebe apenas os \textit{embeddings} do Feature Extractor --- sem acesso a retornos contemporâneos.
+
+\begin{itemize}
+    \item \textbf{Arquitetura:} $K = 16$ cabeças de atenção independentes, uma por fator latente; cada cabeça agrega os \textit{embeddings} com pesos baseados em similaridade cosseno e \textit{gate} ReLU.
+    \item \textbf{Saída:} parâmetros da distribuição prior dos fatores latentes: $p(z \mid x_t) = \mathcal{N}(\mu_{\text{prior}},\, \mathrm{diag}(\sigma_{\text{prior}}^2))$.
+    \item \textbf{Na inferência:} único bloco que produz a distribuição sobre os fatores; o Factor Encoder é descartado. Os parâmetros $\mu_{\text{prior}}$ e $\sigma_{\text{prior}}$ são passados ao Factor Decoder (Subseção~\ref{subsec:factor-decoder}).
+\end{itemize}
+
+\subsection{Factor Decoder}
+\label{subsec:factor-decoder}
+
+Opera em treino e inferência. Combina os \textit{embeddings} do Feature Extractor com os parâmetros de $z$ para produzir a distribuição preditiva dos retornos por ativo.
+
+\begin{itemize}
+    \item \textbf{Saídas por ativo:} $\alpha^{(i)} \sim \mathcal{N}(\mu_\alpha^{(i)}, \sigma_\alpha^{(i)})$ (componente idiossincrático) e $\beta^{(i)} \in \mathbb{R}^K$ (exposições fatoriais).
+    \item \textbf{Composição gaussiana analítica:} sob independência condicional e hipótese gaussiana, a distribuição preditiva de $r^{(i)}$ tem forma fechada, sem Monte Carlo:
+\end{itemize}
+
+\begin{align}
+    \mu_y^{(i)} &= \mu_\alpha^{(i)} + \beta^{(i)\top}\, \mu_{\text{prior}} \label{eq:mu-preditivo} \\
+    \sigma_y^{(i)} &= \sqrt{\left(\sigma_\alpha^{(i)}\right)^2 + \sum_{k=1}^{K} \left(\beta^{(i,k)}\right)^2 \left(\sigma_{\text{prior}}^{(k)}\right)^2} \label{eq:sigma-preditivo}
+\end{align}
+
+\begin{itemize}
+    \item \textbf{Incerteza preditiva como subproduto:} $\sigma_y^{(i)}$ (Equação~\ref{eq:sigma-preditivo}) quantifica a incerteza por ativo em forma fechada --- aproveitável na construção de estratégias ajustadas ao risco (Capítulo~\ref{cap:conclusao}).
+    \item \textbf{No treino:} o Decoder recebe $z_{\text{post}} \sim q(z|x_t, y_t)$ para calcular a NLL; \textbf{na inferência:} usa $\mu_{\text{prior}}$ e $\sigma_{\text{prior}}$ diretamente, sem amostragem.
+\end{itemize}
+
+% PLACEHOLDER: figura do fluxo de inferência --- Feature Extractor -> Factor Predictor ->
+% Factor Decoder, com dimensões dos tensores em cada etapa. Elaboração própria.
+
+\subsection{Função objetivo}
+\label{subsec:funcao-objetivo}
+
+A função objetivo é o negativo do ELBO adaptado ao esquema professor-aluno. É nela que a variável-alvo $y^{(i)}$ --- o retorno logarítmico de $t{+}1$ para $t{+}2$ (Subseção~\ref{subsec:periodo}) --- aparece explicitamente, dentro da NLL:
+
+\begin{equation}
+    \mathcal{L}(x, y) = \underbrace{-\frac{1}{N}\sum_{i=1}^{N} \log p_{\phi_{\text{dec}}}\!\left(y^{(i)} \;\middle|\; x,\, z_{\text{post}}\right)}_{\text{NLL (qualidade de reconstrução)}} + \;\gamma \cdot \underbrace{\mathrm{KL}\!\left(q_{\phi_{\text{enc}}}(z|x,y) \;\|\; p_{\phi_{\text{pred}}}(z|x)\right)}_{\text{regularização (prior-posterior)}}
+    \label{eq:loss}
+\end{equation}
+
+\begin{itemize}
+    \item \textbf{NLL:} média sobre $N$ ativos da log-verossimilhança negativa dos retornos contemporâneos $y^{(i)}$ sob a distribuição produzida pelo Decoder com $z_{\text{post}}$; mede a qualidade da reconstrução.
+    \item \textbf{KL:} divergência entre posterior (Factor Encoder, oráculo) e prior (Factor Predictor, aluno); tem forma fechada para duas gaussianas; força o Predictor a aprender fatores consistentes com o oráculo.
+    \item \textbf{Hiperparâmetro $\gamma$:} controla o peso relativo da regularização; agendamento linear durante os primeiros 500 passos (\textit{KL warmup}) e decisões de estabilização numérica documentados no Apêndice~\ref{ap:estabilizacao}.
+    \item \textbf{Otimizador:} Adam, \textit{learning rate} $3 \times 10^{-4}$, \textit{weight decay} $10^{-4}$; \textit{batch} de uma \textit{cross-section} por passo; \textit{early stopping} monitorando Rank IC de validação com paciência de 10 épocas.
+    \item \textbf{Validade do esquema:} o diagnóstico de Posterior IC (Apêndice~\ref{ap:diagnosticos}) verifica que o Factor Encoder captura sinal preditivo genuíno dos retornos contemporâneos.
+\end{itemize}
+
+\section{Avaliação}
 \label{sec:avaliacao}
 
-\subsection{Modelos Comparados}
-\label{subsec:modelos-comparados}
-
-A progressão de baselines isola sucessivamente as propriedades da arquitetura do \textit{FactorVAE}.
+\subsection{Métricas}
+\label{subsec:metricas}
 
 \begin{itemize}
-    \item \textbf{EW Market (benchmark de referência):} portfólio igual-ponderado sobre o universo de ativos disponíveis em cada data --- sem sinal preditivo; serve como benchmark de portfólio para calcular excesso de retorno e Information Ratio.
-    \item \textbf{Momentum:} retorno dos últimos 20 dias (Ret20) como previsão direta --- o sinal econômico mais simples, sem aprendizado; representativo do prêmio de momento documentado na literatura.
-    \item \textbf{Ridge:} regressão Ridge com as mesmas $C = 20$ características como entrada --- limite do problema sob hipótese de linearidade e regularização L2; avalia se a não-linearidade das redes neurais agrega valor.
-    \item \textbf{MLP:} rede \textit{feedforward} com as mesmas características --- acrescenta não-linearidade sobre o Ridge, sem estrutura temporal; avalia o ganho de representações não-lineares.
-    \item \textbf{GRU:} rede recorrente com as mesmas características --- acrescenta estrutura temporal sobre o MLP, sem componente probabilístico e sem estrutura fatorial explícita; representa a alternativa neural mais próxima do FactorVAE em complexidade.
-    \item \textbf{Nota metodológica:} os modelos diferem do \textit{FactorVAE} em mais de uma dimensão simultaneamente; a comparação não constitui ablação formal --- a atribuição causal estrita ficaria a cargo de um estudo de ablação dedicado, fora do escopo deste trabalho.
+    \item \textbf{Rank IC:} correlação de Spearman entre retornos previstos ($\mu_y^{(i)}$) e retornos realizados no \textit{cross-section} de cada data $t$; média ao longo do período de teste. Mede a qualidade do sinal preditivo sem depender da estratégia de portfólio.
+    \item \textbf{Rank ICIR:} razão entre a média e o desvio-padrão das observações diárias de Rank IC --- mede a consistência temporal do sinal; sinal com alto IC mas ICIR baixo é instável e difícil de monetizar.
+    \item \textbf{Métricas de portfólio:} retorno anualizado, retorno em excesso sobre o benchmark EW Market, volatilidade anualizada, Índice de Sharpe, Information Ratio (IR), Índice de Calmar, drawdown máximo e \textit{hit rate} (fração de períodos com retorno positivo).
 \end{itemize}
 
-\subsection{Métricas e Construção de Carteira}
-\label{subsec:avaliacao-robustez}
+\subsection{Backtest}
+\label{subsec:backtest}
 
 \begin{itemize}
-    \item \textbf{Rank IC:} correlação de Spearman entre retornos previstos e retornos realizados no \textit{cross-section} de cada data $t$; média ao longo do período de teste. Mede a qualidade do sinal preditivo sem depender da estratégia de portfólio.
-    \item \textbf{Rank ICIR:} razão entre a média e o desvio-padrão das observações diárias de Rank IC --- mede a consistência temporal do sinal; sinal com alto IC mas ICIR baixo é instável e difícil de monetizar.
-    \item \textbf{Estratégia TopK-Drop \parencite{yang2020}:} a cada data, selecionar os $k = 50$ ativos com maior retorno previsto; rebalancear a carteira com no máximo $n = 5$ substituições por dia (controla turnover); portfólio igual-ponderado entre os $k$ ativos selecionados.
-    \item \textbf{Adaptação ao universo brasileiro:} $k = 50$ representa $\approx 15$--$25\%$ do \textit{cross-section} típico no período de teste --- fração substancialmente maior do que os $\approx 1{,}5\%$ do mercado chinês; a comparação direta de magnitudes de retorno é problemática e deve ser interpretada com cautela.
-    \item \textbf{Custo de transação:} 10~bps \textit{one-way} por posição substituída ($\approx 20$~bps \textit{round-trip}), aplicado a cada troca de ativo a cada dia; custo constante --- não captura impacto de mercado em ativos menos líquidos (limitação discutida no Capítulo~\ref{cap:conclusao}).
-    \item \textbf{Métricas de portfólio:} retorno anualizado, retorno em excesso sobre o benchmark EW Market, volatilidade anualizada, Índice de Sharpe, Information Ratio, Índice de Calmar, drawdown máximo e hit rate (fração de períodos com retorno positivo).
-    \item \textbf{Robustez a ativos não vistos (holdout-retrain):} $m$ tickers selecionados aleatoriamente são removidos do treinamento; o modelo é retreinado do zero; Rank IC é calculado apenas sobre esses $m$ tickers no período de teste. Procedimento repetido para $m \in \{10, 50\}$ com múltiplas amostras aleatórias --- quantifica a capacidade de generalização a IPOs e ativos de baixa liquidez histórica.
+    \item \textbf{Estratégia TopK-Drop \parencite{yang2020}:} a cada data, selecionar os $k = 50$ ativos com maior retorno previsto ($\mu_y^{(i)}$); rebalancear a carteira com no máximo $n = 5$ substituições por dia (controla \textit{turnover}); portfólio igual-ponderado entre os $k$ ativos selecionados.
+    \item \textbf{Adaptação ao universo brasileiro:} $k = 50$ representa $\approx 35$--$40\%$ do \textit{cross-section} típico de $\approx 130$ ativos --- fração substancialmente maior do que os $\approx 1{,}5\%$ do mercado chinês; comparação direta de magnitudes de retorno deve ser interpretada com cautela.
+    \item \textbf{Custo de transação:} 10~bps \textit{one-way} por posição substituída ($\approx 20$~bps \textit{round-trip}), aplicado a cada troca de ativo; custo constante --- não captura impacto de mercado em ativos menos líquidos (limitação discutida no Capítulo~\ref{cap:conclusao}).
+    \item \textbf{Benchmark:} portfólio EW Market --- igual-ponderado sobre o universo disponível em cada data, sem sinal preditivo.
+    \item \textbf{Robustez a ativos não vistos (holdout-retrain):} $m$ tickers selecionados aleatoriamente são removidos do treinamento; o modelo é retreinado do zero; Rank IC é calculado apenas sobre esses $m$ tickers no período de teste. Procedimento repetido para $m \in \{10, 50\}$ com múltiplas amostras aleatórias --- quantifica capacidade de generalização a IPOs e ativos de baixa liquidez histórica.
+\end{itemize}
+
+\subsection{Modelos de comparação}
+\label{subsec:modelos-comparacao}
+
+A progressão de \textit{baselines} isola sucessivamente as propriedades da arquitetura do \textit{FactorVAE}.
+
+\begin{itemize}
+    \item \textbf{Momentum:} retorno dos últimos 20 dias (Ret20) como previsão direta --- sinal econômico sem aprendizado; representativo do prêmio de momento documentado na literatura.
+    \item \textbf{Ridge:} regressão Ridge com as mesmas $C = 20$ características como entrada --- limite do problema sob hipótese de linearidade e regularização L2; avalia se a não-linearidade das redes neurais agrega valor.
+    \item \textbf{MLP:} rede \textit{feedforward} com as mesmas características --- acrescenta não-linearidade sobre o Ridge, sem estrutura temporal.
+    \item \textbf{GRU:} rede recorrente com as mesmas características --- acrescenta estrutura temporal sobre o MLP, sem componente probabilístico e sem estrutura fatorial explícita; representa a alternativa neural mais próxima do FactorVAE em complexidade.
+    \item \textbf{Nota metodológica:} os modelos diferem do \textit{FactorVAE} em mais de uma dimensão simultaneamente; a comparação não constitui ablação formal --- a atribuição causal estrita ficaria a cargo de um estudo de ablação dedicado, fora do escopo deste trabalho.
 \end{itemize}

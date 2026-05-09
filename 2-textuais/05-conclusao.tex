@@ -8,7 +8,12 @@
     \item \textbf{Skill cross-sectional:} [COMPLETAR] --- Rank IC médio do \textit{FactorVAE} vs.\ baselines, conforme Tabela~\ref{tab:skill}. A vantagem é [presente/modesta/inexistente] com magnitude [X].
     \item \textbf{Performance de portfólio:} [COMPLETAR] --- Índice de Sharpe e excesso sobre EW Market após custos, conforme Tabela~\ref{tab:performance}. O alfa líquido é [positivo/próximo de zero/negativo].
     \item \textbf{Robustez:} [COMPLETAR] --- degradação do IC em ativos retidos é [pequena/moderada/grande], conforme Tabela~\ref{tab:robustez}. Generalização para IPOs e ativos não vistos é [viável/problemática].
-    \item \textbf{Confronto com o artigo original:} os resultados qualitativos de \textcite{duan2022} são [confirmados/parcialmente confirmados]; as magnitudes são menores, em linha com as diferenças estruturais entre B3 e A-share (universo $\approx 10\times$ menor, concentração setorial, ausência de características fundamentalistas).
+    \item \textbf{Confronto com \textcite{duan2022}:}
+    \begin{itemize}
+        \item \textbf{Onde confirma:} vantagem em Rank IC sobre baselines lineares e neurais; ganho de Sharpe; robustez holdout limitada --- resultados qualitativos centrais replicados.
+        \item \textbf{Onde discorda (magnitudes):} IC e retorno em excesso substancialmente menores que no A-share; alfa líquido próximo de zero após custos; maior variabilidade do ICIR.
+        \item \textbf{Hipóteses:} universo $\approx 130$ vs.\ $>3.000$ ativos; concentração setorial (commodities, financeiro, energia); ausência de características fundamentalistas; choques macroeconômicos idiossincráticos ao Brasil (2020--2023); menor volume de dados de treinamento.
+    \end{itemize}
     \item \textbf{Resposta à pergunta de pesquisa:} [COMPLETAR após obter resultados quantitativos].
 \end{itemize}
 
