@@ -236,7 +236,7 @@
   \newcounter{profCount}%
   \setcounter{profCount}{1}%
   \foreach \professor in \listaProfessores {%
-    \assinatura{\textbf{\professor} \\ Convidado \theprofCount}%
+    \assinatura{\textbf{\professor} \\ Examinador}%
     \stepcounter{profCount}%
   }%
 }
