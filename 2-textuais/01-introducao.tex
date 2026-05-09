@@ -1,10 +1,54 @@
 \chapter{Introdução}
 \label{cap:introducao}
 
-A identificação de fatores sistemáticos de risco constitui uma das tarefas centrais das finanças modernas. Modelos de fatores cumprem três funções econômicas interligadas: decompor o risco de portfólios em componentes sistemáticos e idiossincráticos, estimar matrizes de covariância em grandes \textit{cross-sections} a partir de estruturas parcimoniosamente parametrizadas, e formar expectativas condicionais de retorno como combinações lineares de exposições a fatores comuns. A sequência canônica dessa literatura parte do \textit{Capital Asset Pricing Model} de \textcite{sharpe1964} e da teoria de precificação por arbitragem de \textcite{ross1976}, avança para os modelos de fatores construídos a partir de características observáveis de \textcite{fama1993} e \textcite{fama2015}, e constitui a espinha dorsal da gestão quantitativa de portfólios até hoje.
+\bigskip
+\textbf{Contexto: modelos de fatores e a virada para fatores latentes data-driven}
 
-A limitação central desses modelos reside na especificação ex-ante dos fatores: o pesquisador precisa decidir, antes de ver os dados, quais características são portadoras de prêmio de risco sistemático. Essa dependência de hipóteses prévias, combinada com a restrição da linearidade na estimação das exposições, motivou uma virada metodológica em direção a abordagens que aprendem fatores diretamente dos dados. \textcite{gu2021} demonstraram que autoencoders condicionais superam sistematicamente modelos lineares e redes neurais sem estrutura fatorial na previsão do \textit{cross-section} de retornos norte-americanos. A limitação dessas abordagens é que produzem estimativas pontuais de retorno, operando sob baixa razão sinal-ruído sem mecanismo explícito para tratar essa fonte de incerteza. A extensão probabilística surge como tentativa de endereçar o problema de forma estrutural: em vez de estimar o retorno esperado pontualmente, o modelo aprende a distribuição condicional completa dos retornos, capturando heterogeneidade na incerteza tanto idiossincrática quanto sistemática.
+\begin{itemize}
+    \item A identificação de fatores sistemáticos de risco como tarefa central das finanças modernas: decomposição de risco em componentes sistemático e idiossincrático, estimação eficiente de matrizes de covariância e formação de expectativas condicionais de retorno.
+    \item Trajetória canônica: CAPM \parencite{sharpe1964} e APT \parencite{ross1976} como ponto de partida — fator único (mercado), depois múltiplos fatores sem derivação de equilíbrio; exposições estimadas por regressão de série temporal; betas constantes no tempo.
+    \item Segunda geração (fatores observáveis): Fama-French três e cinco fatores \parencite{fama1993,fama2015} e Carhart \parencite{carhart1997} — fatores construídos a partir de características observáveis das empresas (tamanho, B/M, rentabilidade, investimento, momento); hipóteses ex-ante sobre quais características carregam prêmio de risco; relações lineares; parâmetros estáticos.
+    \item Limitações estruturais que motivam a busca por alternativas: (i) especificação ex-ante arbitrária e proliferação de fatores sem critério de seleção sistemático (\textit{factor zoo}); (ii) linearidade na relação características-retornos; (iii) betas constantes no tempo, mesmo quando o ambiente macroeconômico muda.
+    \item Virada data-driven: IPCA \parencite{kelly2019} — exposições como função linear das características dos ativos, variantes no tempo; Conditional Autoencoder \parencite{gu2021} — fatores latentes e exposições aprendidos por autoencoder, não-linearidades capturadas, superioridade empírica sobre modelos lineares no \textit{cross-section} norte-americano.
+    \item Limitação remanescente: ambas as abordagens produzem estimativas pontuais de retorno esperado, sem modelagem explícita da distribuição condicional completa — problema relevante em dados com baixa razão sinal-ruído, onde a incerteza sobre os fatores latentes é informação descartada.
+\end{itemize}
 
-O \textit{FactorVAE}, proposto por \textcite{duan2022}, representa essa extensão probabilística dos modelos fatoriais neurais. A arquitetura combina uma estrutura de fatores latentes com inferência variacional: durante o treinamento, um codificador extrai uma distribuição \textit{posterior} sobre os fatores a partir dos retornos contemporâneos; um preditor aprende a distribuição \textit{prior} correspondente a partir exclusivamente de informação histórica; e a função objetivo força a aproximação entre as duas distribuições, transferindo ao preditor o conteúdo informativo capturado pelo codificador. Na inferência fora da amostra, apenas o preditor e o decodificador participam — o codificador é descartado por depender dos retornos realizados, indisponíveis no momento da previsão. O modelo foi avaliado no mercado A-share chinês, com universo superior a três mil ativos e período de teste de dois anos. O comportamento do \textit{FactorVAE} em mercados com algumas centenas de ativos, custos de transação não-triviais e período de teste mais longo não foi documentado. A pergunta que orienta este trabalho é direta: o \textit{FactorVAE} replicado fielmente no mercado brasileiro mantém vantagem de \textit{skill} cross-sectional sobre baselines neurais, e essa vantagem sobrevive à tradução em portfólio sob custos de transação realistas?
+\bigskip
+\textbf{O FactorVAE como modelo probabilístico nessa trajetória}
 
-O restante do trabalho está organizado da seguinte forma. O Capítulo~\ref{cap:revisao} revisa a evolução dos modelos de fatores, apresenta os fundamentos de inferência variacional necessários para compreender a função objetivo do modelo e descreve os procedimentos de avaliação que serão aplicados. O Capítulo~\ref{cap:metodologia} especifica operacionalmente a arquitetura, os dados e os procedimentos de comparação. O Capítulo~\ref{cap:resultados} apresenta e interpreta os resultados. O Capítulo~\ref{cap:conclusao} sintetiza os achados, discute limitações e propõe extensões.
+\begin{itemize}
+    \item \textcite{duan2022} propõem o \textit{FactorVAE}: extensão probabilística dos modelos fatoriais neurais, aplicando inferência variacional para modelar os fatores latentes como variáveis aleatórias.
+    \item Ideia central: em vez de estimar o retorno esperado pontualmente, o modelo aprende a distribuição condicional completa dos retornos — capturando heterogeneidade na incerteza tanto idiossincrática quanto sistemática.
+    \item Esquema professor-aluno: durante o treino, um codificador acessa os retornos contemporâneos e produz uma distribuição posterior informada sobre os fatores; um preditor acessa apenas informação histórica e produz a distribuição prior; a função objetivo força o preditor a aprender os fatores relevantes ao imitar o codificador. Na inferência fora da amostra, apenas preditor e decodificador participam.
+    \item Propriedade prática: composição gaussiana analítica no decodificador — a distribuição preditiva dos retornos tem média e variância em forma fechada, sem Monte Carlo; a estimativa de risco por ativo é subproduto direto do modelo.
+    \item Avaliação original: mercado A-share chinês, universo superior a 3.000 ativos, período de teste de dois anos. Comportamento do modelo em mercados com algumas centenas de ativos, custos não-triviais e período de teste mais longo não foi documentado.
+\end{itemize}
+
+\bigskip
+\textbf{Pergunta de pesquisa central}
+
+\begin{itemize}
+    \item \textbf{Pergunta central:} o \textit{FactorVAE}, replicado fielmente no mercado brasileiro de ações, mantém vantagem de \textit{skill} cross-sectional sobre benchmarks lineares e neurais simples? Essa vantagem sobrevive à tradução em portfólio sob custos de transação realistas no universo da B3?
+    \item Especificidade do contexto: universo de $\approx 300$--$500$ ativos (contra $>3.000$ no estudo original), concentração setorial em commodities, energia e financeiro, liquidez heterogênea.
+    \item Implicação do universo menor: estratégia TopK-Drop com $k=50$ corresponde a $\approx 15$--$25\%$ do \textit{cross-section} disponível — contra $\approx 1{,}5\%$ no mercado chinês — o que condiciona a interpretação de todas as métricas de portfólio e torna a comparação direta de magnitudes problemática.
+    \item Período de teste cobre múltiplos regimes: pandemia e \textit{crash} de 2020, ciclo de aperto monetário de 2021--2022 e mudança de governo de 2023 — relevante para avaliar robustez do sinal a diferentes configurações de risco e liquidez.
+\end{itemize}
+
+\bigskip
+\textbf{Contribuições do trabalho}
+
+\begin{itemize}
+    \item Primeira replicação do \textit{FactorVAE} fora do mercado chinês, documentando as adaptações ao contexto da B3: construção do universo point-in-time a partir da Economatica, conjunto de características técnicas disponíveis e calibração de hiperparâmetros.
+    \item Avaliação sistemática em quatro dimensões: \textit{skill} cross-sectional (Rank IC, Rank ICIR), performance de portfólio ajustada ao risco após custos de transação (Sharpe, drawdown, retorno em excesso), comportamento operacional (hit rate, turnover) e robustez a ativos não vistos durante o treinamento (holdout-retrain).
+    \item Confronto direto com \textcite{duan2022}: identificação das dimensões em que a replicação confirma o artigo original e das dimensões em que discorda, com hipóteses para as discordâncias.
+\end{itemize}
+
+\bigskip
+\textbf{Estrutura do texto}
+
+\begin{itemize}
+    \item Capítulo~\ref{cap:revisao}: trajetória dos modelos de fatores dos estáticos aos latentes dinâmicos; fundamentos de inferência variacional e VAEs; apresentação conceitual do \textit{FactorVAE}.
+    \item Capítulo~\ref{cap:metodologia}: formalização do modelo, dados, procedimento de avaliação e modelos de comparação.
+    \item Capítulo~\ref{cap:resultados}: resultados de \textit{skill} preditivo, performance de portfólio, robustez e confronto com o artigo original.
+    \item Capítulo~\ref{cap:conclusao}: síntese dos achados, resposta à pergunta de pesquisa, limitações e agenda futura.
+\end{itemize}

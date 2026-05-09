@@ -1,12 +1,30 @@
 \chapter{Conclusão}
 \label{cap:conclusao}
 
-% PLACEHOLDER: completar o primeiro parágrafo após obter os resultados experimentais.
-% Estrutura: (i) retomada da pergunta de pesquisa em uma frase; (ii) síntese dos achados
-% na ordem em que aparecem nos resultados — skill cross-sectional, performance de portfólio,
-% excesso contra o benchmark após custos. Sem hedging; afirmar o que os dados mostram.
-Este trabalho avaliou se o \textit{FactorVAE}, replicado fielmente no mercado brasileiro de ações, mantém vantagem de \textit{skill} cross-sectional sobre baselines neurais e se essa vantagem sobrevive à tradução em portfólio sob custos de transação realistas. [COMPLETAR COM SÍNTESE DOS ACHADOS QUANTITATIVOS APÓS OBTER OS RESULTADOS.]
+\bigskip\textbf{Síntese dos achados e resposta à pergunta de pesquisa}
 
-Quatro limitações merecem registro. Primeira, o tamanho reduzido do conjunto de dados — aproximadamente 5.000 pregões — em relação à complexidade do modelo, com efeito provável sobre a estabilidade do treinamento e a precisão das estimativas. Segunda, a dependência do codificador em retornos contemporâneos é uma característica do modelo original que define seu papel como reconstrutor retrospectivo durante o treinamento; a estrutura não constitui vazamento de dados, mas condiciona o significado da posterior e a interpretação do ELBO. Terceira, o custo de transação fixo em 10~bps \textit{one-way} é uma aproximação que não captura impacto de mercado em ativos menos líquidos, possivelmente subestimando os custos efetivos da estratégia. Quarta, o período de teste, apesar de cobrir múltiplos regimes, não esgota o espaço de configurações macroeconômicas possíveis.
+\begin{itemize}
+    \item \textbf{Pergunta de pesquisa:} o \textit{FactorVAE} replicado na B3 mantém vantagem de \textit{skill} cross-sectional sobre baselines e essa vantagem sobrevive à tradução em portfólio sob custos de transação realistas?
+    \item \textbf{Skill cross-sectional:} [COMPLETAR] --- Rank IC médio do \textit{FactorVAE} vs.\ baselines, conforme Tabela~\ref{tab:skill}. A vantagem é [presente/modesta/inexistente] com magnitude [X].
+    \item \textbf{Performance de portfólio:} [COMPLETAR] --- Índice de Sharpe e excesso sobre EW Market após custos, conforme Tabela~\ref{tab:performance}. O alfa líquido é [positivo/próximo de zero/negativo].
+    \item \textbf{Robustez:} [COMPLETAR] --- degradação do IC em ativos retidos é [pequena/moderada/grande], conforme Tabela~\ref{tab:robustez}. Generalização para IPOs e ativos não vistos é [viável/problemática].
+    \item \textbf{Confronto com o artigo original:} os resultados qualitativos de \textcite{duan2022} são [confirmados/parcialmente confirmados]; as magnitudes são menores, em linha com as diferenças estruturais entre B3 e A-share (universo $\approx 10\times$ menor, concentração setorial, ausência de características fundamentalistas).
+    \item \textbf{Resposta à pergunta de pesquisa:} [COMPLETAR após obter resultados quantitativos].
+\end{itemize}
 
-Três extensões futuras merecem investigação. A primeira é a avaliação em janelas mais longas à medida que mais dados ficam disponíveis, o que permitiria separar com maior precisão os efeitos de regime do sinal estrutural do modelo. A segunda é a substituição do TopK-Drop por estratégias \textit{risk-aware} que utilizem as estimativas de incerteza $\sigma_y^{(i)}$ por ativo, entregues em forma fechada pelo decodificador conforme a Equação~\ref{eq:sigma-preditivo} — análoga à variante TDrisk reportada por \textcite{duan2022}. A terceira é a aplicação do mesmo arcabouço de avaliação a outros mercados emergentes, para mapear como a vantagem do \textit{FactorVAE} depende de características estruturais do mercado como profundidade do universo, liquidez e concentração setorial.
+\bigskip\textbf{Limitações}
+
+\begin{itemize}
+    \item \textbf{Universo restrito:} $\approx 300$--$500$ ativos no período de teste vs.\ $>3.000$ no estudo original; menor diversificação do cross-section reduz a profundidade do sinal preditivo e dificulta a comparação direta de magnitudes.
+    \item \textbf{Características exclusivamente técnicas:} ausência de características fundamentalistas (P/L, ROE, alavancagem) que podem carregar sinal preditivo complementar em horizontes mais longos; limitação imposta pela disponibilidade de dados no período amostral.
+    \item \textbf{Custo de transação fixo:} 10~bps \textit{one-way} é uma aproximação que não captura impacto de mercado em ativos menos líquidos da B3 --- os custos efetivos da estratégia TopK para tickers de menor capitalização provavelmente excedem essa estimativa.
+    \item \textbf{Portfólios comprados apenas:} a estratégia TopK-Drop é \textit{long-only}; a ausência de posições vendidas limita a extração do sinal preditivo nos dois extremos do cross-section e impede a avaliação do alfa puro desalavancado do sinal.
+\end{itemize}
+
+\bigskip\textbf{Agenda futura}
+
+\begin{itemize}
+    \item \textbf{Janelas mais longas:} à medida que dados adicionais ficam disponíveis, reavaliar o modelo em períodos de teste mais longos para separar efeitos de regime macroeconômico do sinal estrutural do modelo; em particular, verificar se a vantagem em IC se mantém fora dos regimes de alta volatilidade de 2020--2022.
+    \item \textbf{Estratégias ajustadas ao risco:} substituir o TopK-Drop por portfólios que utilizem a incerteza preditiva $\sigma_y^{(i)}$ (Equação~\ref{eq:sigma-preditivo}), entregue em forma fechada pelo decodificador --- análoga à variante TDrisk de \textcite{duan2022} --- para verificar se a representação probabilística dos fatores acrescenta valor econômico além do sinal de retorno esperado.
+    \item \textbf{Outros mercados emergentes:} aplicar o mesmo protocolo de avaliação a outros mercados com características estruturais distintas (México, Índia, África do Sul) para mapear como a vantagem do \textit{FactorVAE} depende de profundidade do universo, liquidez e concentração setorial --- contribuição metodológica além da replicação no Brasil.
+\end{itemize}

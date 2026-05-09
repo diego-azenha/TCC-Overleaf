@@ -1,14 +1,21 @@
 \chapter{Resultados}
 \label{cap:resultados}
 
-A avaliação é organizada em quatro dimensões: \textit{skill} cross-sectional, performance ajustada ao risco, comportamento operacional e robustez a ativos não vistos. Uma nota metodológica é necessária antes de apresentar os resultados: a NLL não é reportada para comparação entre famílias de modelos. No caso do \textit{FactorVAE}, a função objetivo minimizada durante o treinamento é o negativo do ELBO, que é um \textit{limite inferior} da log-verossimilhança marginal verdadeira; comparar esse valor diretamente com a NLL de modelos sem inferência variacional seria metodologicamente inválido. Diagnósticos de treinamento estão restritos ao Apêndice~\ref{ap:estabilizacao}.
+% Nota metodológica: a NLL não é reportada para comparação entre famílias de modelos;
+% o ELBO é um limite inferior da log-verossimilhança marginal, e comparar diretamente
+% com a NLL de modelos sem inferência variacional seria metodologicamente inválido.
+% Diagnósticos de treinamento estão no Apêndice~\ref{ap:estabilizacao}.
 
-\section{Skill Preditivo Cross-Sectional}
+\section{Qualidade do Sinal Preditivo}
 \label{sec:resultados-skill}
 
-% PLACEHOLDER: escrever comentário ancorado nos valores da Tabela~\ref{tab:skill}.
-% Estrutura esperada: FactorVAE lidera em Rank IC médio; GRU competitivo em Rank ICIR;
-% diferença sobre Momentum e Ridge é consistente mas não dramática; sem hedging.
+\begin{itemize}
+    \item Apresentar a Tabela~\ref{tab:skill} com Rank IC médio e Rank ICIR de cada modelo no período de teste.
+    \item Discutir a ordenação dos modelos: se o \textit{FactorVAE} lidera em Rank IC médio, isso confirma que a estrutura fatorial probabilística produz previsões mais alinhadas com os retornos realizados do que os baselines.
+    \item Discutir o quanto o ganho em IC se traduz em ICIR: se o GRU for competitivo em ICIR apesar de inferior em IC, o \textit{FactorVAE} tem sinal mais forte mas menos estável --- importante para a interpretação do portfólio.
+    \item Magnitude da vantagem sobre Momentum e Ridge: consistente mas não dramática (esperado dado o universo restrito e o menor volume de dados em relação ao estudo original).
+    \item Resultado afirmado sem hedging: descrever exatamente o que os dados mostram, mesmo se a vantagem for pequena.
+\end{itemize}
 
 \begin{table}[htbp]
     \centering
@@ -28,14 +35,16 @@ A avaliação é organizada em quatro dimensões: \textit{skill} cross-sectional
     \fonte{Elaboração própria.}
 \end{table}
 
-\section{Performance Ajustada ao Risco}
+\section{Performance de Carteira após Custos}
 \label{sec:resultados-performance}
 
-% PLACEHOLDER: escrever interpretação em três pontos ancorados nos valores da Tabela~\ref{tab:performance}:
-% (1) FactorVAE supera outros sinais em retorno absoluto e ajustado ao risco;
-% (2) excesso anualizado contra benchmark igual-ponderado praticamente nulo após custos;
-% (3) controle de drawdown entre os melhores do conjunto.
-% Esse é o resultado central — discutir com clareza, não omitir.
+\begin{itemize}
+    \item Apresentar a Tabela~\ref{tab:performance} e as Figuras~\ref{fig:retorno-acumulado} e~\ref{fig:retorno-excesso}.
+    \item \textbf{Ponto 1 --- Ganho de Sharpe:} comparar o Índice de Sharpe do \textit{FactorVAE} com os demais modelos; se o melhor Rank IC se traduz em melhor Sharpe, quantificar a magnitude da diferença.
+    \item \textbf{Ponto 2 --- Ausência (ou não) de retorno absoluto acima do EW Market:} confrontar o ganho de Sharpe com o retorno em excesso sobre o benchmark igual-ponderado após custos; se o excesso anualizado for próximo de zero, discutir por que isso pode coexistir com Sharpe superior (menor volatilidade, não maior retorno).
+    \item \textbf{Ponto 3 --- Drawdown e Calmar:} avaliar controle de risco de cauda; o \textit{FactorVAE} entrega menor drawdown máximo do que os baselines?
+    \item Resultado central: afirmado claramente e sem omissão --- incluindo se o alfa líquido após custos não se materializa.
+\end{itemize}
 
 \begin{table}[htbp]
     \centering
@@ -79,13 +88,59 @@ A avaliação é organizada em quatro dimensões: \textit{skill} cross-sectional
     \label{fig:retorno-excesso}
 \end{figure}
 
-\section{Comportamento Operacional da Estratégia}
-\label{sec:resultados-operacional}
+\section{Robustez a Ativos Não Vistos}
+\label{sec:resultados-robustez}
 
-% PLACEHOLDER: conectar hit rate e turnover ao resultado de portfólio da seção anterior.
-% Estrutura esperada: FactorVAE acima de 50\% de hit rate e turnover moderado vs. Ridge/MLP/GRU.
-% A combinação explica por que um ganho modesto em Rank IC se traduz em melhor performance
-% — o sinal é convertido em portfólio com menos atrito.
+\begin{itemize}
+    \item Apresentar a Tabela~\ref{tab:robustez} com os resultados do protocolo holdout-retrain para $m \in \{10, 50\}$ ativos retidos.
+    \item Discutir a magnitude da degradação do Rank IC nos tickers retidos vs.\ o Rank IC de universo completo: queda pequena indica generalização robusta; queda grande indica forte dependência de histórico de treinamento.
+    \item Implicação prática para IPOs e ativos pouco líquidos: se a degradação for pequena, o modelo pode ser aplicado a ativos recém-listados sem retreinamento imediato.
+    \item O compartilhamento de pesos entre ativos no Extrator de Características é o mecanismo que deveria garantir generalização --- os resultados confirmam ou contradizem essa expectativa teórica?
+\end{itemize}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Rank IC do \textit{FactorVAE} sob protocolo holdout-retrain.}
+    \label{tab:robustez}
+    \begin{tabular}{lcccc}
+        \toprule
+        \textbf{Ativos retidos ($m$)} & \textbf{Trials} & \textbf{Rank IC (holdout)} & \textbf{Desvio} & \textbf{Rank IC (universo)} \\
+        \midrule
+        $m = 10$  & ---  & ---  & ---  & ---  \\
+        $m = 50$  & ---  & ---  & ---  & ---  \\
+        \bottomrule
+    \end{tabular}
+    \fonte{Elaboração própria.}
+\end{table}
+
+\section{Confronto com o Artigo Original}
+\label{sec:resultados-confronto}
+
+\begin{itemize}
+    \item \textbf{Onde confirma \textcite{duan2022}:}
+    \begin{itemize}
+        \item Vantagem em IC: o \textit{FactorVAE} supera baselines lineares e neurais em Rank IC médio, replicando o resultado qualitativo central do artigo original.
+        \item Ganho de Sharpe: a superioridade em IC se traduz em portfólio com melhor ajuste risco-retorno, coerente com \textcite{duan2022}.
+        \item Robustez holdout: a degradação em ativos não vistos é limitada, confirmando a capacidade de generalização pela estrutura de pesos compartilhados.
+    \end{itemize}
+    \item \textbf{Onde discorda (ou magnitudes diferem):}
+    \begin{itemize}
+        \item Magnitudes menores: Rank IC e retorno em excesso são substancialmente inferiores aos reportados para o mercado A-share --- diferença esperada dado o universo $\approx 10\times$ menor.
+        \item Alfa líquido próximo de zero: o excesso de retorno sobre o benchmark EW Market após custos de 10~bps não é significativo, enquanto o artigo original reporta alfa positivo -- pode refletir universo menor, menor diversificação e custos relativamente maiores.
+        \item Estabilidade do ICIR: variabilidade temporal do IC é maior no contexto brasileiro, possivelmente refletindo menor liquidez e maior concentração setorial.
+    \end{itemize}
+    \item \textbf{Hipóteses para as discordâncias:}
+    \begin{itemize}
+        \item \textbf{Universo restrito:} $\approx 400$ ativos vs.\ $>3.000$ no artigo original --- sinal de diversificação e profundidade do cross-section são fundamentalmente diferentes.
+        \item \textbf{Concentração setorial:} bolsa brasileira fortemente concentrada em commodities, financeiro e energia; covariância alta entre ativos reduz diversificação efetiva do portfólio TopK.
+        \item \textbf{Características exclusivamente técnicas:} ausência de fatores fundamentalistas (P/L, ROE, alavancagem) que o artigo original inclui; pode empobrecer o sinal preditivo em horizontes mais longos.
+        \item \textbf{Regime macroeconômico:} período de teste cobre pandemia 2020, aperto monetário 2021--22 e mudança de governo 2023 --- choques idiossincráticos ao mercado brasileiro sem paralelo no período chinês original.
+        \item \textbf{Volume de dados de treinamento:} menor janela histórica e menor cross-section por data reduzem o número de observações efetivas e podem dificultar convergência do codificador.
+    \end{itemize}
+\end{itemize}
+
+% NOTA: a Tabela~\ref{tab:operacional} (hit rate e turnover) é reportada abaixo como
+% material de apoio à discussão operacional da estratégia TopK-Drop.
 
 \begin{table}[htbp]
     \centering
@@ -100,28 +155,6 @@ A avaliação é organizada em quatro dimensões: \textit{skill} cross-sectional
         Linear (Ridge)     & ---               & ---                            \\
         MLP                & ---               & ---                            \\
         GRU                & ---               & ---                            \\
-        \bottomrule
-    \end{tabular}
-    \fonte{Elaboração própria.}
-\end{table}
-
-\section{Robustez a Ativos Não Vistos}
-\label{sec:resultados-robustez}
-
-% PLACEHOLDER: interpretar degradação do Rank IC nos tickers retidos para cada valor de $m$.
-% O que a magnitude da queda diz sobre a capacidade de generalização do modelo
-% a IPOs e ativos pouco líquidos?
-
-\begin{table}[htbp]
-    \centering
-    \caption{Rank IC do \textit{FactorVAE} sob protocolo holdout-retrain.}
-    \label{tab:robustez}
-    \begin{tabular}{lcccc}
-        \toprule
-        \textbf{Ativos retidos ($m$)} & \textbf{Trials} & \textbf{Rank IC (holdout)} & \textbf{Desvio} & \textbf{Rank IC (universo)} \\
-        \midrule
-        $m = 10$  & ---  & ---  & ---  & ---  \\
-        $m = 50$  & ---  & ---  & ---  & ---  \\
         \bottomrule
     \end{tabular}
     \fonte{Elaboração própria.}
