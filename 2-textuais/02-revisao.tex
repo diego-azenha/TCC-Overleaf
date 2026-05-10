@@ -25,18 +25,34 @@ dados.
 
 A primeira geração de modelos responde a essa questão por derivação de equilíbrio ou por argumento
 de arbitragem. O CAPM de \textcite{sharpe1964} estabelece que, em equilíbrio, o único fator
-relevante é o excesso de retorno do portfólio de mercado, e as exposições são estimadas por
-regressão de série temporal. A \textit{Arbitrage Pricing Theory} de \textcite{ross1976} generaliza
-essa estrutura sem exigir hipóteses de equilíbrio: sob ausência de arbitragem, os retornos
-esperados são determinados por sensibilidades a múltiplos fatores sistemáticos, cada um carregando
-seu próprio prêmio de risco. Em ambos os casos, os fatores são definidos ex-ante pelo pesquisador
-e as exposições são tratadas como parâmetros fixos estimados sobre a janela histórica inteira.
+relevante é o excesso de retorno do portfólio de mercado:
+
+\begin{equation}
+    \mathbb{E}[r_{i,t}] - r_{f,t} = \beta_{i,M}\,\!\left(\mathbb{E}[r_{M,t}] - r_{f,t}\right)
+    \label{eq:capm}
+\end{equation}
+
+\noindent em que $r_{f,t}$ é a taxa livre de risco, $r_{M,t}$ é o retorno do portfólio de mercado e
+$\beta_{i,M}$ é a sensibilidade do ativo $i$ a esse fator, estimada por regressão de série
+temporal. A \textit{Arbitrage Pricing Theory} de \textcite{ross1976} generaliza essa estrutura sem
+exigir hipóteses de equilíbrio: sob ausência de arbitragem, os retornos esperados são determinados
+por sensibilidades a múltiplos fatores sistemáticos, cada um carregando seu próprio prêmio de
+risco. Em ambos os casos, os fatores são definidos ex-ante pelo pesquisador e as exposições são
+tratadas como parâmetros fixos estimados sobre a janela histórica inteira.
 
 A segunda geração mantém a linearidade e os betas constantes, mas abandona a derivação teórica e
 constrói os fatores empiricamente a partir de características observáveis das empresas.
 \textcite{fama1993} propõem três fatores --- mercado, SMB (\textit{small minus big}) e HML
 (\textit{high minus low}) --- como proxies para fontes de risco que o portfólio de mercado sozinho
-não captura. \textcite{fama2015} estendem o modelo para cinco fatores ao incorporar rentabilidade
+não captura, formalizando o modelo como
+
+\begin{equation}
+    r_{i,t} - r_{f,t} = \alpha_i + \beta_{i,M}\,\text{MKT}_t + \beta_{i,S}\,\text{SMB}_t + \beta_{i,H}\,\text{HML}_t + \varepsilon_{i,t}
+    \label{eq:ff3}
+\end{equation}
+
+\noindent em que MKT, SMB e HML são retornos de portfólios construídos sobre características das
+empresas. \textcite{fama2015} estendem o modelo para cinco fatores ao incorporar rentabilidade
 operacional (RMW) e política de investimento (CMA); \textcite{carhart1997} acrescenta um fator de
 momento (WML). O ganho dessa geração é duplo: os fatores passam a ter interpretação econômica como
 prêmios de risco associados a características observáveis, e o procedimento de estimação é
@@ -45,13 +61,18 @@ ex-ante dos fatores, linearidade e betas constantes no tempo.
 
 Essas limitações tornaram-se progressivamente mais visíveis à medida que a literatura acumulou
 centenas de fatores documentados sem critério de seleção sistemático, o chamado \textit{factor zoo}
-\parencite{harvey2016}. A proliferação expôs duas fraquezas estruturais. A primeira é o caráter
-arbitrário da especificação ex-ante: a escolha de quais características geram prêmios de risco
-depende de hipóteses do pesquisador que os dados, sozinhos, não validam de forma robusta. A segunda
-é a restrição de estacionariedade: a sensibilidade de uma empresa ao câmbio, ao ciclo de
-commodities ou às condições de crédito se altera com o ambiente macroeconômico, e betas estimados
-sobre uma janela histórica fixa não capturam essa dinâmica. A resposta a ambas as limitações veio
-sob a forma de modelos que aprendem os fatores diretamente dos dados.
+\parencite{harvey2016}. A proliferação atingiu uma escala em que cada novo estudo encontrava
+características adicionais com poder explicativo aparente, sem que houvesse arcabouço estatístico
+robusto para distinguir prêmios genuínos de descobertas espúrias decorrentes de testes múltiplos.
+Surgiram, em paralelo, fatores associados a qualidade, baixa volatilidade e a ajustes para ativos
+intangíveis, ampliando ainda mais o conjunto de candidatos. Esse acúmulo expôs duas fraquezas
+estruturais. A primeira é o caráter arbitrário da especificação ex-ante: a escolha de quais
+características geram prêmios de risco depende de hipóteses do pesquisador que os dados, sozinhos,
+não validam de forma robusta. A segunda é a restrição de estacionariedade: a sensibilidade de uma
+empresa ao câmbio, ao ciclo de commodities ou às condições de crédito se altera com o ambiente
+macroeconômico, e betas estimados sobre uma janela histórica fixa não capturam essa dinâmica. A
+resposta a ambas as limitações veio sob a forma de modelos que aprendem os fatores diretamente dos
+dados.
 
 \textcite{kelly2019} propõem o IPCA (\textit{Instrumented Principal Components Analysis}), em que
 as exposições fatoriais $\beta_{i,t}$ são especificadas como função linear das características
@@ -86,6 +107,49 @@ arquitetura completa do \textit{FactorVAE} é especificada no Capítulo~\ref{cap
 % PLACEHOLDER: figura ilustrando a progressão histórica — linha do tempo ou diagrama com
 % os cinco estágios (CAPM/APT → FF/Carhart → IPCA → Conditional Autoencoder → FactorVAE)
 % e o ganho conceitual em cada salto. Elaboração própria.
+
+
+\section{Inferência Bayesiana}
+\label{sec:inferencia-bayesiana}
+
+A passagem dos modelos de fatores neurais com estimativas pontuais para o \textit{FactorVAE}
+exige um arcabouço estatístico distinto da estimação clássica por máxima verossimilhança. Na
+abordagem bayesiana, os parâmetros e variáveis latentes não são valores fixos a serem estimados,
+mas variáveis aleatórias com distribuições associadas. Dado um conjunto de observações $x$ e uma
+variável latente $z$ a ser inferida, o teorema de Bayes combina a verossimilhança $p(x|z)$ com a
+distribuição \textit{a priori} $p(z)$ para produzir a distribuição \textit{a posteriori}:
+
+\begin{equation}
+    p(z \mid x) = \frac{p(x \mid z)\, p(z)}{p(x)}
+    \label{eq:bayes}
+\end{equation}
+
+\noindent A prior $p(z)$ representa o conhecimento sobre $z$ antes de observar os dados; a
+posterior $p(z \mid x)$ representa o conhecimento sobre $z$ depois de observá-los. A distinção
+mais importante entre a inferência bayesiana e a estimação por máxima verossimilhança não está na
+equação em si, mas no objeto que cada abordagem produz. A estimação clássica retorna um único
+valor para o parâmetro ou variável latente; a inferência bayesiana retorna uma distribuição
+completa de probabilidade, que captura simultaneamente uma estimativa pontual (via média ou moda)
+e a incerteza associada (via variância ou intervalos de credibilidade).
+
+Em famílias específicas de distribuições, a posterior admite forma fechada. Quando prior e
+verossimilhança são gaussianas, a posterior também é gaussiana com média e covariância dadas por
+expressões algébricas dos parâmetros das distribuições de entrada --- a chamada propriedade de
+conjugação Normal-Normal. Esse resultado tem consequência prática direta: a inferência pode ser
+conduzida sem amostragem, com custo computacional comparável ao da estimação por máxima
+verossimilhança. Foi essa propriedade que motivou a Análise Fatorial Bayesiana e a PPCA
+\parencite{tipping1999}: sob hipóteses gaussianas, o problema de inferência dos fatores latentes
+admite solução analítica, sem necessidade de métodos numéricos. O \textit{FactorVAE} preserva essa
+estrutura linear-gaussiana no decodificador, o que permite que a distribuição preditiva dos
+retornos seja calculada em forma fechada mesmo quando o codificador e o preditor são redes
+neurais não-lineares.
+
+Quando o modelo gerador é não-linear, a posterior em geral não tem forma fechada. A solução adotada
+pelo VAE é a inferência variacional: aproximar a posterior verdadeira $p(z \mid x)$ por uma
+distribuição $q_\phi(z \mid x)$ pertencente a uma família tratável (tipicamente gaussiana), com
+parâmetros $\phi$ produzidos por uma rede neural. A qualidade da aproximação é otimizada
+minimizando a divergência de Kullback-Leibler entre $q_\phi$ e a posterior verdadeira, o que se
+traduz na maximização do \textit{Evidence Lower Bound} (ELBO), derivado na seção seguinte.
 
 
 \section{Variational Autoencoders}

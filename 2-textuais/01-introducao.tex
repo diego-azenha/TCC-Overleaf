@@ -1,46 +1,56 @@
 \chapter{Introdução}
 \label{cap:introducao}
 
-A identificação de fatores sistemáticos de risco é uma das tarefas centrais das finanças modernas.
-Quando os retornos de centenas de ativos se movem de forma coordenada em resposta a choques
-macroeconômicos, variações nas taxas de juros ou mudanças no apetite global por risco, essa
-covariância não é acidental: ela reflete a exposição comum dos ativos a fontes de risco que atravessam
-o mercado como um todo. Separar esse componente sistemático da variação genuinamente específica de
-cada empresa --- o componente idiossincrático --- é o problema que os modelos de fatores se propõem
-a resolver, e sua relevância prática é direta: estimação eficiente de matrizes de covariância,
-construção de portfólios diversificados e formação de expectativas condicionais de retorno dependem
-todos de uma descrição adequada dessa estrutura fatorial subjacente.
+Compreender como o risco é remunerado nos mercados financeiros é um dos objetivos centrais da
+teoria moderna de finanças. Quando os retornos de centenas de ativos se movem de forma coordenada
+em resposta a choques macroeconômicos, variações nas taxas de juros ou mudanças no apetite global
+por risco, essa covariância não é acidental: ela reflete a exposição comum dos ativos a fontes de
+risco que atravessam o mercado como um todo. Separar esse componente sistemático da variação
+genuinamente específica de cada empresa --- o componente idiossincrático --- é o problema que os
+modelos de fatores se propõem a resolver, e sua relevância prática é direta: estimação eficiente
+de matrizes de covariância, construção de portfólios diversificados e formação de expectativas
+condicionais de retorno dependem todos de uma descrição adequada dessa estrutura fatorial
+subjacente.
 
-A resposta inicial a esse problema foi proposta por \textcite{sharpe1964} com o CAPM e generalizada
-por \textcite{ross1976} com a \textit{Arbitrage Pricing Theory}: o retorno de cada ativo é escrito
-como combinação linear de exposições a fatores de risco comuns, acrescida de um componente
-idiossincrático não correlacionado entre ativos. No CAPM, um único fator --- o excesso de retorno do
-portfólio de mercado --- resume toda a covariância sistemática; na APT, múltiplos fatores são
-admitidos sem que se derive qual carteira os representa. Em ambos os casos, as exposições são
-estimadas por regressão de série temporal e tratadas como constantes no tempo. A segunda geração de
-modelos abandona a derivação de equilíbrio e constrói os fatores diretamente a partir de
-características observáveis das empresas. \textcite{fama1993} propõem portfólios formados com base
-em tamanho e índice book-to-market como proxies para fontes de risco não capturadas pelo mercado;
-\textcite{fama2015} estendem o modelo para cinco fatores, incorporando rentabilidade e investimento;
-\textcite{carhart1997} acrescenta um fator de momento. A lógica permanece a mesma: hipóteses ex-ante
-sobre quais características geram prêmios sistemáticos, estimação por regressão linear de painel,
-exposições constantes no tempo.
+A primeira resposta a esse problema veio com o CAPM de \textcite{sharpe1964}, que forneceu um
+arcabouço teórico simples e testável: o retorno esperado de cada ativo é determinado por sua
+sensibilidade a um único fator sistemático --- o excesso de retorno do portfólio de mercado.
+\textcite{ross1976} generalizou essa estrutura com a \textit{Arbitrage Pricing Theory}, admitindo
+múltiplos fatores sem exigir hipóteses de equilíbrio: sob ausência de arbitragem, os retornos
+esperados são determinados por sensibilidades a um vetor de fatores sistemáticos, cada um carregando
+seu próprio prêmio de risco. Em ambos os casos, as exposições são estimadas por regressão de série
+temporal e tratadas como constantes ao longo do tempo.
 
-Três limitações estruturais acumuladas ao longo dessa trajetória motivaram a busca por alternativas.
-A primeira é a dependência da especificação ex-ante: o modelo é tão bom quanto as hipóteses do
-pesquisador sobre quais características são portadoras de prêmio de risco, e a proliferação de
-centenas de fatores documentados sem critério de seleção sistemático --- o chamado \textit{factor
-zoo} \parencite{harvey2016} --- expôs o caráter arbitrário dessa escolha. A segunda é a restrição
-linear, que impede a captura de interações não-lineares entre características e retornos. A terceira
-é a estacionariedade das exposições: betas constantes no tempo desconsideram que a sensibilidade de
-uma empresa ao câmbio, ao ciclo de commodities ou às condições de crédito se altera com o ambiente
-macroeconômico. A resposta a essas limitações veio sob a forma de modelos que deixam os dados
-determinar os fatores. \textcite{kelly2019} propõem o IPCA, em que as exposições fatoriais são
-função linear das características dos ativos e, portanto, variam no tempo conforme as características
-variam, mantendo a estimação tratável por mínimos quadrados alternados. \textcite{gu2021} avançam
-com o Conditional Autoencoder: fatores latentes e exposições são aprendidos conjuntamente por uma
-rede neural, permitindo que não-linearidades entre características e retornos sejam capturadas sem
-especificação ex-ante. A superioridade empírica sobre modelos lineares no \textit{cross-section}
+À medida que novas evidências empíricas surgiram, as limitações do modelo de fator único tornaram-se
+evidentes. \textcite{jensen1968} documentou desempenhos anômalos não explicados pelo CAPM, e
+\textcite{banz1981} identificou o ``efeito tamanho'', segundo o qual ações de menor capitalização
+apresentam retornos sistematicamente superiores ao previsto pelo modelo. Esses resultados indicaram
+a existência de outras dimensões de risco sistemático não capturadas por um único fator. A resposta
+foi a segunda geração de modelos, que mantém a estrutura linear mas constrói os fatores diretamente
+a partir de características observáveis das empresas: \textcite{fama1993} propõem portfólios
+formados com base em tamanho e índice book-to-market como proxies para fontes de risco não
+capturadas pelo mercado; \textcite{fama2015} estendem o modelo para cinco fatores, incorporando
+rentabilidade e investimento; \textcite{carhart1997} acrescenta um fator de momento. A lógica
+permanece a mesma: hipóteses ex-ante sobre quais características geram prêmios sistemáticos,
+estimação por regressão linear de painel e exposições constantes no tempo.
+
+Três limitações estruturais acumuladas ao longo dessa trajetória motivaram a busca por
+alternativas. A primeira é a dependência da especificação ex-ante: o modelo é tão bom quanto as
+hipóteses do pesquisador sobre quais características são portadoras de prêmio de risco, e a
+proliferação de centenas de fatores documentados sem critério de seleção sistemático --- o chamado
+\textit{factor zoo} \parencite{harvey2016} --- expôs o caráter arbitrário dessa escolha. A segunda
+é a restrição linear, que impede a captura de interações não-lineares entre características e
+retornos. A terceira é a estacionariedade das exposições: betas constantes no tempo desconsideram
+que a sensibilidade de uma empresa ao câmbio, ao ciclo de commodities ou às condições de crédito
+se altera com o ambiente macroeconômico.
+
+A literatura recente passou a concentrar esforços em modelos que deixam os dados determinar os
+fatores. \textcite{kelly2019} propõem o IPCA, em que as exposições fatoriais são função linear das
+características dos ativos e, portanto, variam no tempo conforme as características variam,
+mantendo a estimação tratável por mínimos quadrados alternados. \textcite{gu2021} avançam com o
+\textit{Conditional Autoencoder}: fatores latentes e exposições são aprendidos conjuntamente por
+uma rede neural, permitindo que não-linearidades entre características e retornos sejam capturadas
+sem especificação ex-ante. A superioridade empírica sobre modelos lineares no \textit{cross-section}
 norte-americano é substancial e documentada sistematicamente.
 
 A limitação remanescente compartilhada por ambas as abordagens é que produzem estimativas pontuais
@@ -48,39 +58,47 @@ de retorno esperado. Em dados financeiros com baixa razão sinal-ruído, a incer
 latentes é informação substantiva: saber que um modelo é pouco confiante em sua previsão para um
 determinado ativo é tão relevante quanto a previsão em si, tanto para a construção de portfólios
 ajustados ao risco quanto para a detecção de regimes em que o sinal preditivo é estruturalmente
-fraco. Tratar os fatores como valores fixos descarta essa informação. \textcite{duan2022} propõem o
-\textit{FactorVAE} como extensão probabilística dos modelos fatoriais neurais, aplicando inferência
-variacional para modelar os fatores latentes como variáveis aleatórias com média e variância
-aprendidas. A inovação arquitetural central é um esquema professor-aluno entre dois módulos: durante
-o treinamento, um codificador acessa os retornos contemporâneos da data de previsão e produz uma
-distribuição posterior informada sobre os fatores, que serve de alvo para um preditor treinado
-exclusivamente com informação histórica. A divergência KL entre as duas distribuições compõe a função
-objetivo junto com a log-verossimilhança negativa dos retornos reconstruídos, forçando o preditor a
-aprender os fatores relevantes por imitação do codificador. Na inferência fora da amostra, o
-codificador é descartado --- ele depende dos retornos contemporâneos, indisponíveis no momento da
-previsão --- e apenas o preditor e o decodificador participam. Uma propriedade prática emerge da
-estrutura do decodificador: sob independência condicional entre o componente idiossincrático e os
-fatores, a distribuição preditiva de cada ativo tem média e variância em forma fechada, sem
-necessidade de simulação de Monte Carlo, de modo que estimativas de incerteza por ativo são
-entregues como subproduto direto da previsão. O modelo foi avaliado no mercado A-share chinês, com
-universo superior a 3.000 ativos e período de teste de dois anos.
+fraco. Modelos baseados em regressão estimam exposições fatoriais e retornos esperados, mas não
+caracterizam a incerteza associada a esses estimadores; tratar os retornos como realizações de uma
+distribuição de probabilidade condicional, em vez de valores fixos a serem previstos, tem
+implicações concretas para gestão de risco.
+
+\textcite{duan2022} propõem o \textit{FactorVAE} como extensão probabilística dos modelos fatoriais
+neurais. O modelo aplica inferência variacional para tratar os fatores latentes como variáveis
+aleatórias com média e variância aprendidas, e sua inovação arquitetural central é um esquema
+professor-aluno entre dois módulos. Durante o treinamento, um codificador acessa os retornos
+contemporâneos da data de previsão e produz uma distribuição posterior informada sobre os fatores,
+que serve de alvo para um preditor treinado exclusivamente com informação histórica. A divergência
+KL entre as duas distribuições compõe a função objetivo junto com a log-verossimilhança negativa
+dos retornos reconstruídos, forçando o preditor a aprender os fatores relevantes por imitação do
+codificador. Na inferência fora da amostra, o codificador é descartado --- ele depende dos retornos
+contemporâneos, indisponíveis no momento da previsão --- e apenas o preditor e o decodificador
+participam.
+
+Uma propriedade prática emerge da estrutura linear-gaussiana do decodificador. Sob independência
+condicional entre o componente idiossincrático e os fatores, a distribuição preditiva de cada ativo
+tem média e variância em forma fechada, sem necessidade de simulação de Monte Carlo, de modo que
+estimativas de incerteza por ativo são entregues como subproduto direto da previsão. O modelo foi
+avaliado no mercado A-share chinês, com universo superior a 3.000 ativos e período de teste de
+dois anos.
 
 Esse recorte empírico deixa uma questão em aberto. O comportamento do \textit{FactorVAE} em
 mercados com universo restrito, custos de transação não negligenciáveis e períodos de teste
-suficientemente longos para cobrir múltiplos regimes macroeconômicos não foi documentado. A pergunta
-que organiza este trabalho é: o \textit{FactorVAE}, replicado fielmente no mercado brasileiro de
-ações, mantém vantagem de \textit{skill} cross-sectional sobre benchmarks lineares e neurais simples,
-e essa vantagem sobrevive à tradução em portfólio sob custos de transação realistas? O contexto
-brasileiro impõe condições substancialmente diferentes das do estudo original. O universo de ativos
-da B3 conta com aproximadamente 130 ativos por \textit{cross-section} no período de teste, contra
-mais de 3.000 no A-share chinês, com marcada concentração setorial em commodities, energia e setor
-financeiro, e liquidez heterogênea entre os tickers. A estratégia de portfólio adotada, com $k = 50$
-ações em carteira, corresponde a cerca de 38\% do \textit{cross-section} disponível numa data típica
---- proporção muito superior ao 1,5\% do mercado original ---, o que condiciona a interpretação de
-todas as métricas de portfólio e torna problemática a comparação direta de magnitudes. O período de
-teste, por sua vez, cobre sete anos com regimes distintos: a pandemia e o \textit{crash} de 2020, o
-ciclo de aperto monetário de 2021--2022 e a mudança de governo de 2023, configurando um conjunto de
-condições de risco e liquidez mais amplo do que o avaliado originalmente.
+suficientemente longos para cobrir múltiplos regimes macroeconômicos não foi documentado. A
+pergunta que organiza este trabalho é: o \textit{FactorVAE}, replicado fielmente no mercado
+brasileiro de ações, mantém vantagem de \textit{skill} cross-sectional sobre benchmarks lineares e
+neurais simples, e essa vantagem sobrevive à tradução em portfólio sob custos de transação
+realistas? O contexto brasileiro impõe condições substancialmente diferentes das do estudo
+original. O universo de ativos da B3 conta com aproximadamente 130 ativos por \textit{cross-section}
+no período de teste, contra mais de 3.000 no A-share chinês, com marcada concentração setorial em
+commodities, energia e setor financeiro, e liquidez heterogênea entre os tickers. A estratégia de
+portfólio adotada, com $k = 50$ ações em carteira, corresponde a cerca de 38\% do
+\textit{cross-section} disponível numa data típica --- proporção muito superior ao 1,5\% do mercado
+original ---, o que condiciona a interpretação de todas as métricas de portfólio e torna problemática
+a comparação direta de magnitudes. O período de teste, por sua vez, cobre sete anos com regimes
+distintos: a pandemia e o \textit{crash} de 2020, o ciclo de aperto monetário de 2021--2022 e a
+mudança de governo de 2023, configurando um conjunto de condições de risco e liquidez mais amplo
+do que o avaliado originalmente.
 
 Este trabalho faz três contribuições. A primeira é documentar a replicação do \textit{FactorVAE}
 fora do mercado chinês, registrando as adaptações necessárias ao contexto da B3: construção do
@@ -98,8 +116,8 @@ discordâncias observadas.
 
 O restante do trabalho está organizado da seguinte forma. O Capítulo~\ref{cap:revisao} percorre a
 evolução dos modelos de fatores dos estáticos aos latentes dinâmicos, estabelece os fundamentos de
-inferência variacional necessários para compreender a função objetivo do modelo e apresenta o
-\textit{FactorVAE} em detalhe conceitual. O Capítulo~\ref{cap:metodologia} especifica
+inferência bayesiana e variacional necessários para compreender a função objetivo do modelo e
+apresenta o \textit{FactorVAE} em detalhe conceitual. O Capítulo~\ref{cap:metodologia} especifica
 operacionalmente a arquitetura, os dados utilizados, os modelos de comparação e os procedimentos de
 avaliação. O Capítulo~\ref{cap:resultados} apresenta e interpreta os resultados nas quatro dimensões
 de avaliação. O Capítulo~\ref{cap:conclusao} sintetiza os achados, responde à pergunta de pesquisa,
