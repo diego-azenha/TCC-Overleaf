@@ -1,0 +1,39 @@
+\chapter{Hiperparâmetros e Configuração}
+\label{ap:hiperparametros}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Configuração completa do experimento.}
+    \label{tab:hiperparametros}
+    \begin{tabular}{lll}
+        \toprule
+        \textbf{Parâmetro} & \textbf{Valor} & \textbf{Descrição} \\
+        \midrule
+        \multicolumn{3}{l}{\textit{Arquitetura}} \\
+        $H$ (dim. oculta)      & ---   & Dimensão dos estados ocultos da GRU e das MLPs \\
+        $K$ (fatores)          & 16    & Número de fatores latentes \\
+        $M$ (portfólios)       & 64    & Portfólios do codificador \\
+        $T$ (janela temporal)  & 20    & Dias úteis de histórico por ativo \\
+        $C$ (características)  & 20    & Características por ativo por período \\
+        \midrule
+        \multicolumn{3}{l}{\textit{Otimizador}} \\
+        Algoritmo              & Adam  & --- \\
+        Learning rate          & $3 \times 10^{-4}$ & Fixo; sem agendamento \\
+        Weight decay           & $10^{-4}$          & Regularização L2 \\
+        Batch size             & 1 cross-section    & Uma data por passo \\
+        Épocas máximas         & ---   & A definir \\
+        Paciência (ES)         & 10    & Épocas sem melhora no Rank IC de validação \\
+        \midrule
+        \multicolumn{3}{l}{\textit{Treinamento}} \\
+        \texttt{kl\_warmup\_steps}  & 500  & Passos de aquecimento do KL \\
+        $\gamma$ (peso KL)     & ---   & A reportar \\
+        \texttt{kl\_free\_bits}& 0     & Mecanismo de free bits desativado \\
+        Random seed            & ---   & A registrar \\
+        \midrule
+        \multicolumn{3}{l}{\textit{Hardware}} \\
+        GPU                    & ---   & A especificar \\
+        Tempo de treinamento   & ---   & A medir \\
+        \bottomrule
+    \end{tabular}
+    \fonte{Elaboração própria.}
+\end{table}

@@ -5,40 +5,11 @@
 \subsection{Características}
 \label{subsec:caracteristicas}
 
-O modelo recebe como entrada $C = 20$ características técnicas calculadas a partir de preço e volume, organizadas em seis categorias: retornos (5), volatilidade (4), volume (3), indicadores técnicos (3), momentos superiores (2) e iliquidez (1). Os critérios de seleção foram disponibilidade na Economatica ao longo de todo o período amostral e representatividade de cada categoria de sinal documentada na literatura. A Tabela~\ref{tab:caracteristicas} detalha cada característica, sua janela de cálculo e sua definição.
+O modelo recebe como entrada $C = 20$ características técnicas calculadas a partir de preço e volume, com cobertura disponível na Economatica ao longo de todo o período amostral. As variáveis foram selecionadas para cobrir seis dimensões complementares do comportamento dos ativos, e cada dimensão é representada por uma ou mais variantes calculadas sobre janelas temporais distintas --- tipicamente entre 1 e 20 dias úteis ---, permitindo ao modelo combinar sinais de diferentes horizontes.
 
-\begin{table}[htbp]
-    \centering
-    \caption{Características técnicas utilizadas como entrada do modelo.}
-    \label{tab:caracteristicas}
-    \resizebox{\textwidth}{!}{%
-    \begin{tabular}{llcp{6cm}}
-        \toprule
-        \textbf{Nome} & \textbf{Categoria} & \textbf{Janela} & \textbf{Definição} \\
-        \midrule
-        Ret1       & Retorno       & 1d    & $\ln(P_t / P_{t-1})$; sinal de reversão de curto prazo \\
-        Ret2       & Retorno       & 2d    & $\ln(P_t / P_{t-2})$; horizonte intermediário \\
-        Ret5       & Retorno       & 5d    & $\ln(P_t / P_{t-5})$; sinal semanal \\
-        Ret10      & Retorno       & 10d   & $\ln(P_t / P_{t-10})$; quinzenal \\
-        Ret20      & Retorno       & 20d   & $\ln(P_t / P_{t-20})$; fator de momentum mensal \\
-        Vol5       & Volatilidade  & 5d    & Desvio-padrão dos retornos diários nos últimos 5 dias \\
-        Vol10      & Volatilidade  & 10d   & Desvio-padrão dos retornos diários nos últimos 10 dias \\
-        Vol20      & Volatilidade  & 20d   & Desvio-padrão dos retornos diários nos últimos 20 dias \\
-        VolRatio   & Volatilidade  & 5/20d & Vol5 / Vol20; mudança recente de volatilidade \\
-        Turnover5  & Volume        & 5d    & Volume médio / capitalização de mercado; últimos 5 dias \\
-        Turnover10 & Volume        & 10d   & Volume médio / capitalização de mercado; últimos 10 dias \\
-        VWAPDev    & Volume        & 5d    & $(P_t - \text{VWAP}_{5d}) / \text{VWAP}_{5d}$; desvio do preço médio ponderado \\
-        RSI        & Ind.\ téc.   & 14d   & Índice de força relativa; $100 - 100\,/\,(1 + U/D)$ \\
-        MADev5     & Ind.\ téc.   & 5d    & $(P_t - \text{MA}_{5d}) / \text{MA}_{5d}$; desvio da média móvel curta \\
-        MADev20    & Ind.\ téc.   & 20d   & $(P_t - \text{MA}_{20d}) / \text{MA}_{20d}$; desvio da média móvel longa \\
-        Skew20     & Mom.\ sup.   & 20d   & Assimetria amostral dos retornos diários nos últimos 20 dias \\
-        Kurt20     & Mom.\ sup.   & 20d   & Curtose amostral dos retornos diários nos últimos 20 dias \\
-        Amihud20   & Iliquidez    & 20d   & $\frac{1}{20}\sum_{s=t-19}^{t} |r_s| / \text{Vol}_s$; medida de Amihud \\
-        % PREENCHER: características 19 e 20 após consolidar dataset
-        \bottomrule
-    \end{tabular}}
-    \fonte{Elaboração própria.}
-\end{table}
+Retornos logarítmicos sobre horizontes diários, semanais e mensais captam tanto reversão de curto prazo quanto efeito \textit{momentum}. Medidas de volatilidade dos retornos diários em diferentes janelas, incluindo a razão entre uma janela curta e uma longa, sinalizam mudanças recentes no regime de variação. Variáveis de volume --- \textit{turnover} normalizado pela capitalização de mercado e desvio em relação ao preço médio ponderado por volume --- adicionam informação sobre intensidade do fluxo negocial. Indicadores técnicos convencionais, como o RSI e desvios em relação a médias móveis, sintetizam padrões recorrentes de excesso e exaustão de movimentos de preço. Momentos superiores dos retornos --- assimetria e curtose --- caracterizam o formato da distribuição além de média e variância. Por fim, a iliquidez de Amihud liga a magnitude dos retornos ao volume negociado, captando o impacto de preço por unidade de fluxo.
+
+A composição completa do conjunto de características, com nomes, janelas de cálculo e definições, está no Anexo~\ref{anexo:caracteristicas}.
 
 
 \section{Modelo}

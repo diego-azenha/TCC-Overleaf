@@ -109,49 +109,6 @@ arquitetura completa do \textit{FactorVAE} é especificada no Capítulo~\ref{cap
 % e o ganho conceitual em cada salto. Elaboração própria.
 
 
-\section{Inferência Bayesiana}
-\label{sec:inferencia-bayesiana}
-
-A passagem dos modelos de fatores neurais com estimativas pontuais para o \textit{FactorVAE}
-exige um arcabouço estatístico distinto da estimação clássica por máxima verossimilhança. Na
-abordagem bayesiana, os parâmetros e variáveis latentes não são valores fixos a serem estimados,
-mas variáveis aleatórias com distribuições associadas. Dado um conjunto de observações $x$ e uma
-variável latente $z$ a ser inferida, o teorema de Bayes combina a verossimilhança $p(x|z)$ com a
-distribuição \textit{a priori} $p(z)$ para produzir a distribuição \textit{a posteriori}:
-
-\begin{equation}
-    p(z \mid x) = \frac{p(x \mid z)\, p(z)}{p(x)}
-    \label{eq:bayes}
-\end{equation}
-
-\noindent A prior $p(z)$ representa o conhecimento sobre $z$ antes de observar os dados; a
-posterior $p(z \mid x)$ representa o conhecimento sobre $z$ depois de observá-los. A distinção
-mais importante entre a inferência bayesiana e a estimação por máxima verossimilhança não está na
-equação em si, mas no objeto que cada abordagem produz. A estimação clássica retorna um único
-valor para o parâmetro ou variável latente; a inferência bayesiana retorna uma distribuição
-completa de probabilidade, que captura simultaneamente uma estimativa pontual (via média ou moda)
-e a incerteza associada (via variância ou intervalos de credibilidade).
-
-Em famílias específicas de distribuições, a posterior admite forma fechada. Quando prior e
-verossimilhança são gaussianas, a posterior também é gaussiana com média e covariância dadas por
-expressões algébricas dos parâmetros das distribuições de entrada --- a chamada propriedade de
-conjugação Normal-Normal. Esse resultado tem consequência prática direta: a inferência pode ser
-conduzida sem amostragem, com custo computacional comparável ao da estimação por máxima
-verossimilhança. Foi essa propriedade que motivou a Análise Fatorial Bayesiana e a PPCA
-\parencite{tipping1999}: sob hipóteses gaussianas, o problema de inferência dos fatores latentes
-admite solução analítica, sem necessidade de métodos numéricos. O \textit{FactorVAE} preserva essa
-estrutura linear-gaussiana no decodificador, o que permite que a distribuição preditiva dos
-retornos seja calculada em forma fechada mesmo quando o codificador e o preditor são redes
-neurais não-lineares.
-
-Quando o modelo gerador é não-linear, a posterior em geral não tem forma fechada. A solução adotada
-pelo VAE é a inferência variacional: aproximar a posterior verdadeira $p(z \mid x)$ por uma
-distribuição $q_\phi(z \mid x)$ pertencente a uma família tratável (tipicamente gaussiana), com
-parâmetros $\phi$ produzidos por uma rede neural. A qualidade da aproximação é otimizada
-minimizando a divergência de Kullback-Leibler entre $q_\phi$ e a posterior verdadeira, o que se
-traduz na maximização do \textit{Evidence Lower Bound} (ELBO), derivado na seção seguinte.
-
-
 \section{Variational Autoencoders}
 \label{sec:vae}
 
