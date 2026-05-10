@@ -1,0 +1,129 @@
+\definecolor{VioletD}{HTML}{534AB7}
+\definecolor{VioletL}{HTML}{EEEDFE}
+\definecolor{TealD}{HTML}{0A6B52}
+\definecolor{TealL}{HTML}{D8F2EA}
+\definecolor{CoralD}{HTML}{993C1D}
+\definecolor{CoralL}{HTML}{FAECE7}
+\definecolor{GreenD}{HTML}{3B6E10}
+\definecolor{GreenL}{HTML}{E3F2D5}
+
+\begin{tikzpicture}[
+    font=\scriptsize,
+    >={Stealth[length=2.2mm, width=1.7mm]},
+    %--- pílula cinza para tensores de entrada
+    tensor/.style={
+        draw=gray!55, thick, rounded corners=12pt,
+        fill=gray!9, minimum width=2.8cm,
+        minimum height=0.62cm, align=center},
+    %--- retângulo chanfrado para redes
+    encnet/.style={
+        draw=VioletD, very thick, chamfered rectangle,
+        chamfered rectangle xsep=0.24cm, fill=VioletL,
+        minimum width=3.0cm, minimum height=0.65cm, align=center},
+    featnet/.style={
+        draw=TealD, very thick, chamfered rectangle,
+        chamfered rectangle xsep=0.24cm, fill=TealL,
+        minimum width=3.0cm, minimum height=0.65cm, align=center},
+    prednet/.style={
+        draw=CoralD, very thick, chamfered rectangle,
+        chamfered rectangle xsep=0.24cm, fill=CoralL,
+        minimum width=3.0cm, minimum height=0.65cm, align=center},
+    decnet/.style={
+        draw=GreenD, very thick, chamfered rectangle,
+        chamfered rectangle xsep=0.24cm, fill=GreenL,
+        minimum width=3.2cm, minimum height=0.65cm, align=center},
+    %--- diamante tracejado para variáveis latentes
+    zpoststy/.style={
+        draw=VioletD, thick, dashed, diamond, fill=VioletL,
+        minimum width=2.6cm, minimum height=1.3cm,
+        align=center, inner sep=1pt},
+    zpriorstys/.style={
+        draw=CoralD, thick, dashed, diamond, fill=CoralL,
+        minimum width=2.6cm, minimum height=1.3cm,
+        align=center, inner sep=1pt},
+    %--- saídas
+    outrec/.style={
+        draw=VioletD, thick, dashed, rounded corners=6pt,
+        fill=VioletL, minimum width=2.4cm,
+        minimum height=0.58cm, align=center},
+    outpred/.style={
+        draw=GreenD, thick, rounded corners=6pt,
+        fill=GreenL, minimum width=2.4cm,
+        minimum height=0.58cm, align=center},
+]
+
+%% ── ENTRADAS ────────────────────────────────────────────────────────
+\node[tensor] (y)    at ( 0.0, 5.3)  {Retornos futuros $y$};
+\node[tensor] (x)    at ( 5.0, 5.3)  {Características $x$};
+
+%% ── REDES ───────────────────────────────────────────────────────────
+\node[encnet]  (enc)  at ( 0.0, 3.8)  {Factor Encoder $\phi_{\mathrm{enc}}$};
+\node[featnet] (feat) at ( 5.0, 3.8)  {Feature Extractor $\phi_{\mathrm{feat}}$};
+\node[prednet] (pred) at (10.0, 3.8)  {Factor Predictor $\phi_{\mathrm{pred}}$};
+
+%% ── VARIÁVEIS LATENTES (diamantes) ─────────────────────────────────
+\node[zpoststy]   (zpost)  at ( 0.0, 2.0)  {$z_{\mathrm{post}}$};
+\node[zpriorstys] (zprior) at (10.0, 2.0)  {$z_{\mathrm{prior}}$};
+
+%% ── DECODER ─────────────────────────────────────────────────────────
+\node[decnet] (dec) at (5.0, 0.4) {Factor Decoder $\phi_{\mathrm{dec}}$};
+
+%% ── SAÍDAS ──────────────────────────────────────────────────────────
+\node[outrec]  (yrec)  at (2.0, -0.9)  {$\hat{y}_{\mathrm{rec}}$};
+\node[outpred] (ypred) at (8.0, -0.9)  {$\hat{y}_{\mathrm{pred}}$};
+
+%% ── SETAS ───────────────────────────────────────────────────────────
+%% Caminho encoder (violeta)
+\draw[->, VioletD, thick] (y.south)       -- (enc.north);
+\draw[->, VioletD, thick] (feat.west)     -- (enc.east);
+\draw[->, VioletD, thick] (enc.south)     -- (zpost.north);
+\draw[->, VioletD, thick] (zpost.east)    |- (dec.west);
+
+%% Caminho compartilhado / feature extractor (teal)
+\draw[->, TealD, thick]   (x.south)       -- (feat.north);
+\draw[->, TealD, thick]   (feat.south)    -- (dec.north);
+
+%% Caminho predictor (coral)
+\draw[->, CoralD, thick]  (feat.east)     -- (pred.west);
+\draw[->, CoralD, thick]  (pred.south)    -- (zprior.north);
+\draw[->, CoralD, thick]  (zprior.west)   |- (dec.east);
+
+%% Decoder → saídas (verde)
+\draw[->, GreenD, thick]  (dec.south west) |- (yrec.north);
+\draw[->, GreenD, thick]  (dec.south east) |- (ypred.north);
+
+%% ── CAIXAS DE GRUPO ─────────────────────────────────────────────────
+%% Encoder (treino): envolve y, enc, zpost
+\draw[VioletD, thick, dashed, rounded corners=7pt]
+    (-1.8, 1.1) rectangle (1.8, 5.8);
+\node[VioletD, font=\tiny\bfseries]
+    at (0.0, 5.97) {Encoder --- dados futuros (treino)};
+
+%% Preditor (inferência): envolve pred, zprior
+\draw[CoralD, thick, dashed, rounded corners=7pt]
+    (8.2, 1.1) rectangle (11.8, 4.3);
+\node[CoralD, font=\tiny\bfseries]
+    at (10.0, 4.47) {Preditor --- dados históricos (inferência)};
+
+%% Decoder: envolve dec, yrec, ypred
+\draw[GreenD, thick, rounded corners=7pt]
+    (0.5, -1.25) rectangle (9.5, 0.85);
+\node[GreenD, font=\tiny\bfseries]
+    at (5.0, 1.02) {Decoder};
+
+%% ── LEGENDA ─────────────────────────────────────────────────────────
+\node[tensor, minimum width=0.85cm, minimum height=0.4cm] (lt)
+    at (2.2, -2.0) {};
+\node[font=\tiny, anchor=west] at (2.75, -2.0) {Tensor};
+
+\node[draw=gray!55, thick, dashed, diamond, fill=gray!10,
+      minimum width=0.72cm, minimum height=0.58cm] (ld)
+    at (5.5, -2.0) {};
+\node[font=\tiny, anchor=west] at (5.92, -2.0) {Var.\ aleatória};
+
+\node[encnet, draw=gray!55, fill=gray!10,
+      minimum width=0.85cm, minimum height=0.4cm] (ln)
+    at (8.8, -2.0) {};
+\node[font=\tiny, anchor=west] at (9.33, -2.0) {Rede};
+
+\end{tikzpicture}%

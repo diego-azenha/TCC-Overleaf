@@ -1,0 +1,42 @@
+\begin{tikzpicture}[
+    font=\small,
+    >={Stealth[length=2mm, width=1.5mm]},
+    rv/.style={draw, dashed, ellipse, fill=white,
+               minimum width=2.4cm, minimum height=0.60cm, align=center},
+    net/.style={draw, fill=white, rounded corners=3pt,
+                minimum width=2.5cm, minimum height=0.62cm, align=center},
+]
+
+%% Caixa externa
+\draw[thick, rounded corners=14pt]
+    (-0.2, 0.15) rectangle (4.55, 5.95);
+
+%% Entradas (fora da caixa)
+\node[rv] (e) at (1.2, -0.45) {Latent features $e$};
+\node[rv] (y) at (3.2, -0.45) {Future returns $y$};
+
+%% Nós internos
+\node[net] (portlayer) at (1.2, 0.95) {Portfolio Layer $\varphi_p$};
+\node[rv]  (ap)        at (1.2, 2.15) {Portfolios weight $a_p$};
+
+\node[draw, circle, minimum size=0.58cm, fill=white, inner sep=0pt]
+    (otimes) at (3.2, 2.15) {$\otimes$};
+
+\node[rv]  (yp)       at (3.2, 3.35) {Portfolios returns $y_p$};
+\node[net] (maplayer) at (3.2, 4.45) {Mapping Layer $\varphi_{\mathrm{map}}$};
+\node[rv]  (zpost)    at (3.2, 5.55) {Posterior factors $z_{\mathrm{post}}$};
+
+%% Setas
+\draw[->] (e.north)         -- (portlayer.south);
+\draw[->] (portlayer.north) -- (ap.south);
+\draw[->] (ap.east)         -- (otimes.west);
+\draw[->] (y.north)         -- (otimes.south);
+\draw[->] (otimes.north)    -- (yp.south);
+\draw[->] (yp.north)        -- (maplayer.south);
+\draw[->] (maplayer.north)  -- (zpost.south);
+
+%% Legenda
+\node[font=\small, anchor=north] at (2.2, -0.9)
+    {(a) Factor encoder};
+
+\end{tikzpicture}

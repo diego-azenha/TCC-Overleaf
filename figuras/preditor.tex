@@ -1,0 +1,57 @@
+\begin{tikzpicture}[
+    node distance=1cm and 1.5cm,
+    block/.style={rectangle, draw, minimum width=2.5cm, minimum height=0.8cm, thick, align=center, font=\large},
+    arrow/.style={-Stealth, thick},
+    label_style/.style={font=\Large\bfseries, align=center}
+]
+
+    % --- 1. Stock Latent Features ---
+    \node[label_style] (title1) {Stock latent\\features};
+    \node[block, below=0.3cm of title1] (e1) {$e^{(1)}$};
+    \node[below=0.1cm of e1] (dots1) {$\vdots$};
+    \node[block, below=0.1cm of dots1] (e2) {$e^{(2)}$};
+    \node[below=0.1cm of e2] (dots2) {$\vdots$};
+    \node[block, below=0.1cm of dots2] (en) {$e^{(N)}$};
+
+    % --- 2. Multi-head global attention ---
+    \node[label_style, right=1.5cm of title1, xshift=0.5cm] (title2) {Muti-head global\\attention};
+    \node[block, fill=red!20, below=0.5cm of title2] (h1) {$h_{\text{muti}}^{(1)}$};
+    \node[block, fill=orange!20, below=0.1cm of h1] (h2) {$h_{\text{muti}}^{(2)}$};
+    \node[below=0.1cm of h2] (dots3) {$\vdots$};
+    \node[block, fill=cyan!20, below=0.1cm of dots3] (hk) {$h_{\text{muti}}^{(K)}$};
+
+    % --- 3. Distribution Network ---
+    \node[trapezium, draw, thick, rotate=-90, minimum width=5cm, minimum height=1.2cm, fill=gray!40, right=1.2cm of dots3, xshift=0.5cm] (dist) {\rotatebox{90}{Distribution network $\pi_{\text{prior}}$}};
+
+    % --- 4. Prior Factors ---
+    \node[label_style, right=2.5cm of title2, xshift=0.5cm] (title3) {Prior factors};
+    
+    % Stack of mu and sigma
+    \node[block, fill=red!20, below=0.3cm of title3, minimum width=1.5cm, minimum height=0.6cm] (mu1) {$\mu_{\text{prior}}^{(1)}$};
+    \node[block, fill=orange!20, below=0pt of mu1, minimum width=1.5cm, minimum height=0.6cm] (mu2) {$\mu_{\text{prior}}^{(2)}$};
+    \node[block, below=0pt of mu2, minimum width=1.5cm, minimum height=0.6cm] (mudots) {$\vdots$};
+    \node[block, fill=cyan!20, below=0pt of mudots, minimum width=1.5cm, minimum height=0.6cm] (muk) {$\mu_{\text{prior}}^{(K)}$};
+    
+    \node[block, fill=red!20, below=0.2cm of muk, minimum width=1.5cm, minimum height=0.6cm] (sig1) {$\sigma_{\text{prior}}^{(1)}$};
+    \node[block, fill=orange!20, below=0pt of sig1, minimum width=1.5cm, minimum height=0.6cm] (sig2) {$\sigma_{\text{prior}}^{(2)}$};
+    \node[block, below=0pt of sig2, minimum width=1.5cm, minimum height=0.6cm] (sigdots) {$\vdots$};
+    \node[block, fill=cyan!20, below=0pt of sigdots, minimum width=1.5cm, minimum height=0.6cm] (sigk) {$\sigma_{\text{prior}}^{(K)}$};
+
+    % --- Connections (Lines and Arrows) ---
+    
+    % Many-to-many colored lines
+    \draw[red!40, thick] (e1.east) -- (h1.west);
+    \draw[blue!20, thick] (e1.east) -- (h2.west);
+    \draw[orange!40, thick] (e2.east) -- (h1.west);
+    \draw[orange!40, thick] (e2.east) -- (h2.west);
+    \draw[orange!20, thick] (e2.east) -- (hk.west);
+    \draw[blue!40, thick] (en.east) -- (h1.west);
+    \draw[blue!40, thick] (en.east) -- (hk.west);
+
+    % Large Gray Arrows
+    \draw[-{Stealth[scale=2]}, line width=5pt, gray!30] ([xshift=0.2cm]h2.east) -- ([xshift=-0.1cm]dist.bottom);
+    
+    \draw[-{Stealth[scale=2]}, line width=5pt, gray!30] ([xshift=0.1cm]dist.top |- mu2.south) -- ([xshift=-0.2cm]mu2.south west);
+    \draw[-{Stealth[scale=2]}, line width=5pt, gray!30] ([xshift=0.1cm]dist.top |- sig2.south) -- ([xshift=-0.2cm]sig2.south west);
+
+\end{tikzpicture}%

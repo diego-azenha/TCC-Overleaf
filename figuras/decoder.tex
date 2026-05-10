@@ -1,0 +1,83 @@
+\begin{tikzpicture}[
+    % Estilos de nó baseados na imagem anterior
+    base/.style={draw, thick, align=center, inner sep=4pt, font=\large},
+    block/.style={base, rectangle, minimum width=3.0cm, minimum height=1.0cm},
+    % Forma hexagonal (usando 'signal' para imitar o original)
+    hex/.style={base, signal, signal to=west and east, minimum height=0.9cm, inner sep=6pt},
+    round/.style={base, rounded rectangle, minimum height=0.9cm},
+    op/.style={draw, thick, circle, minimum size=0.8cm, inner sep=0pt, font=\LARGE},
+    % Estilos de texto
+    label_style/.style={font=\Large, align=center},
+    % Setas e Linhas
+    line/.style={draw, thick, -Stealth},
+    flowline/.style={draw, thick}
+]
+
+    % --- 1. Entrada Inferior (fora da caixa) ---
+    \node[hex] (factors) at (0,0) {Factors $\bm{z}$};
+    \node[round, right=1.5cm of factors] (latent) {Latent \\ features $e$};
+
+    % --- 2. Container Principal (A caixa grande) ---
+    \node[draw, thick, fill=gray!10, rounded corners=15pt, 
+          minimum width=9.0cm, minimum height=7.5cm,
+          above=0.3cm of latent, anchor=south, xshift=-0.75cm] (container) {};
+
+    % --- 3. Camadas e Blocos de Processamento (dentro da caixa) ---
+    % Camadas (Cinza)
+    \node[block, fill=gray!40, above=0.7cm of latent.north, anchor=south, xshift=-1.75cm] (beta_layer) {Beta Layer \\ $\varphi_{\text{beta}}$};
+    \node[block, fill=gray!40, right=0.5cm of beta_layer] (alpha_layer) {Alpha Layer \\ $\pi_{\text{alpha}}$};
+
+    % Exposição e Alpha (Brancos)
+    \node[round, fill=white, above=1.0cm of beta_layer] (exposure) {Exposure $\bm{\beta}$};
+    \node[hex, fill=white, above=1.0cm of alpha_layer] (alpha) {Alpha $\bm{\alpha}$};
+
+    % --- 4. Operadores Matemáticos ---
+    \node[op, above=1.5cm of exposure.west, anchor=south, xshift=-0.5cm] (mul) {$\otimes$};
+    \node[op, above=1.2cm of exposure, xshift=1.75cm] (add) {$\oplus$};
+
+    % --- 5. Saída Superior (fora da caixa) ---
+    \node[hex, fill=white, above=0.3cm of container.north, anchor=south] (returns) {Stock returns $\hat{\bm{y}}$};
+
+    % =============================================
+    % ============ CONEXÕES (LINHAS) ==============
+    % =============================================
+
+    % Linhas de Entrada para as Camadas
+    % Ponto de ramificação para 'latent features'
+    \coordinate (branch) at ($(latent.north) + (0, 0.4cm)$);
+    \draw[flowline] (latent.north) -- (branch);
+    \draw[flowline] (branch) -| (beta_layer.south);
+    \draw[flowline] (branch) -| (alpha_layer.south);
+
+    % Linhas de Camada para o próximo bloco
+    \draw[line] (beta_layer.north) -- (exposure.south);
+    \draw[line] (alpha_layer.north) -- (alpha.south);
+
+    % Linhas para Operadores
+    % 'Factors z' sobe para o multiplicador
+    \draw[line] (factors.north) |- (mul.west);
+    
+    % 'Exposure beta' vai para o multiplicador
+    \draw[line] (exposure.north) -| (mul.east);
+
+    % Do multiplicador para o somador
+    \draw[line] (mul.north) |- (add.west);
+
+    % Do alpha para o somador
+    \draw[line] (alpha.north) |- (add.east);
+
+    % Do somador para o resultado final
+    \draw[line] (add.north) -- (returns.south);
+
+    % Perna solta no canto inferior esquerdo
+    \node (dummy_start) [left=1.5cm of factors, yshift=-0.5cm] {};
+    \draw[line] (dummy_start) |- (factors.west);
+
+    % =============================================
+    % ============ ROTULO DA FIGURA ===============
+    % =============================================
+    % Posicionado centralizado abaixo da caixa
+    \node[font=\LARGE\bfseries, text width=5cm, align=center, below=1.5cm of latent] (caption) 
+    {(b) \quad Factor decoder};
+
+\end{tikzpicture}%

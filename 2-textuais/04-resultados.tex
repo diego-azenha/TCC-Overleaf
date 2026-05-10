@@ -1,10 +1,13 @@
 \chapter{Resultados}
 \label{cap:resultados}
 
+A avaliação foi conduzida sobre o conjunto de teste seguindo o protocolo descrito no Capítulo~\ref{cap:metodologia}. A Seção~\ref{sec:resultados-skill} reporta a qualidade do sinal preditivo cross-sectional medida por Rank IC e Rank ICIR. A Seção~\ref{sec:resultados-performance} traduz esse sinal em performance de portfólio sob a estratégia TopK-Drop com $k = 50$ ativos, restrição de turnover $n = 5$ e custo de transação de 25~bps \textit{one-way}.
+
+
 \section{Sinal Preditivo}
 \label{sec:resultados-skill}
 
-A qualidade do sinal preditivo de cada modelo é medida pelo Rank IC --- correlação de Spearman entre os retornos previstos e os retornos realizados no cross-section de cada data --- e pelo Rank ICIR, que é a razão entre a média e o desvio-padrão do Rank IC ao longo do período de teste. O Rank IC mede a força do sinal de ordenação sem depender da estratégia de portfólio; o ICIR mede sua consistência temporal. Um modelo com IC alto e ICIR baixo produz um sinal que, embora forte em média, oscila entre datas com boa e má capacidade de discriminação. A Tabela~\ref{tab:skill} reporta ambas as métricas para cada modelo.
+A qualidade do sinal preditivo de cada modelo é medida pelo Rank IC, definido como a correlação de Spearman entre os retornos previstos e os retornos realizados no cross-section de cada data, e pelo Rank ICIR, a razão entre a média e o desvio-padrão da série diária de Rank IC ao longo do período de teste. O Rank IC mede a força média do sinal de ordenação sem depender da estratégia de portfólio adotada, e o ICIR mede sua consistência temporal. Um modelo com IC alto e ICIR baixo produz sinal forte em média mas oscilante entre datas, com capacidade de discriminação variável ao longo do tempo. A Tabela~\ref{tab:skill} reporta ambas as métricas.
 
 \begin{table}[htbp]
     \centering
@@ -15,40 +18,39 @@ A qualidade do sinal preditivo de cada modelo é medida pelo Rank IC --- correla
         \textbf{Modelo}    & \textbf{Rank IC médio} & \textbf{Rank ICIR} \\
         \midrule
         \textbf{FactorVAE} & 0{,}040                & 0{,}246            \\
+        CA                 & 0{,}035                & 0{,}219            \\
         GRU                & 0{,}025                & 0{,}217            \\
         IPCA               & 0{,}016                & 0{,}113            \\
-        CA                 & 0{,}035                & 0{,}219            \\
         \bottomrule
     \end{tabular}
     \fonte{Elaboração própria.}
 \end{table}
 
-O FactorVAE obtém o maior Rank IC (0{,}040), seguido pelo CA (0{,}035), pelo GRU (0{,}025) e pelo IPCA (0{,}016). A mesma ordenação se mantém em Rank ICIR, com o FactorVAE liderando (0{,}246). O CA apresenta ICIR (0{,}219) próximo ao do GRU (0{,}217), apesar de IC superior --- o sinal do CA é, em média, mais forte, mas proporcionalmente mais volátil.
+O FactorVAE obtém o maior Rank IC (0{,}040), seguido pelo CA (0{,}035), pelo GRU (0{,}025) e pelo IPCA (0{,}016). A mesma ordenação se mantém em Rank ICIR, com o FactorVAE liderando (0{,}246). O CA apresenta ICIR (0{,}219) próximo ao do GRU (0{,}217) apesar do IC superior, o que indica que o sinal do CA é em média mais forte mas proporcionalmente mais volátil ao longo do tempo do que o do GRU.
 
-A magnitude da vantagem do FactorVAE sobre o GRU em Rank IC é de 0{,}015 (60\% relativo). Essa diferença é consistente com a contribuição da estrutura fatorial probabilística e do esquema professor-aluno, que são os dois componentes que o FactorVAE adiciona sobre uma GRU pura. A distância para o IPCA (0{,}024 em IC, 150\% relativo) reflete a limitação de um modelo de fatores com exposições lineares em um ambiente onde as relações entre características e retornos são provavelmente não-lineares.
-
-Em comparação com os resultados de \textcite{duan2022} no mercado A-share chinês --- onde o FactorVAE alcança Rank IC de 0{,}055 e ICIR de 0{,}568 ---, os valores obtidos na B3 são menores em magnitude (0{,}040 vs.\ 0{,}055 em IC; 0{,}246 vs.\ 0{,}568 em ICIR). A ordenação qualitativa, porém, se reproduz: o FactorVAE lidera em ambas as métricas sobre os demais modelos de fatores dinâmicos e sobre os baselines de predição. A redução em magnitude é esperada dado o universo substancialmente menor ($\approx$300--500 ativos na B3 vs.\ $>$3.000 no mercado chinês) e a menor liquidez de parte do cross-section brasileiro.
+A progressão dos baselines até o FactorVAE permite isolar parcialmente a contribuição das propriedades arquiteturais. A diferença entre IPCA (0{,}016) e CA (0{,}035), modelos que diferem essencialmente pela função de exposições (linear no IPCA, uma camada não-linear no CA), produz o maior salto absoluto dentro do conjunto de baselines, 0{,}019 em IC ou 119\% em termos relativos, capturando o ganho atribuível à não-linearidade nas exposições. A diferença entre GRU (0{,}025) e FactorVAE (0{,}040), de 0{,}015 em IC ou 60\% em termos relativos, captura o efeito conjunto da estrutura fatorial latente, do esquema professor-aluno e do tratamento variacional dos fatores, dado que ambos os modelos compartilham o extrator temporal recorrente sobre o mesmo conjunto de características. O gap menor entre CA e FactorVAE (0{,}005 em IC) é consistente com a interpretação de que a maior parte do ganho do FactorVAE sobre baselines lineares vem da não-linearidade nas exposições, com a estrutura variacional acrescentando incremento menor mas direcionalmente positivo, com ganho mais visível na consistência temporal do sinal (ICIR de 0{,}246 contra 0{,}219).
 
 
 \section{Backtest}
 \label{sec:resultados-performance}
 
-O sinal preditivo da seção anterior é traduzido em portfólio pela estratégia TopK-Drop: a cada data, os $k = 50$ ativos com maior retorno previsto ($\mu_y^{(i)}$) compõem uma carteira igual-ponderada, com no máximo $n = 5$ substituições por dia para controlar o giro. Um custo de 25~bps \textit{one-way} é aplicado a cada troca de ativo. A Tabela~\ref{tab:performance} reporta as métricas de performance ajustada ao risco; as Figuras~\ref{fig:retorno-acumulado} e~\ref{fig:retorno-excesso} mostram a trajetória temporal do retorno acumulado absoluto e em excesso sobre o Ibovespa. O Índice de Sharpe é calculado com taxa de referência de 10\% a.a.\ (referência Selic no período).
+O sinal preditivo da seção anterior é convertido em portfólio pela estratégia TopK-Drop. A cada data, os $k = 50$ ativos com maior $\mu_y^{(i)}$ entre os disponíveis compõem uma carteira igual-ponderada, com no máximo $n = 5$ substituições por dia. Um custo de 25~bps \textit{one-way} é aplicado a cada troca. A Tabela~\ref{tab:performance} reporta as métricas de performance ajustada ao risco para os quatro modelos avaliados, para a variante TDrisk do FactorVAE (que utiliza o desvio-padrão por ativo $\sigma_y^{(i)}$ no critério de seleção, conforme Subseção~\ref{subsec:avaliacao-portfolio}) e para o Ibovespa como referência de mercado. As Figuras~\ref{fig:retorno-acumulado} e~\ref{fig:retorno-excesso} mostram a trajetória temporal do retorno acumulado absoluto e em excesso sobre o Ibovespa. O Índice de Sharpe é calculado com taxa de referência de 10\% a.a., compatível com o nível médio da Selic no período.
 
 \begin{table}[htbp]
     \centering
-    \caption{Performance ajustada ao risco no período de teste (TopK-Drop, $k=50$, custo 25~bps \textit{one-way}, taxa de referência 10\%~a.a.).}
+    \caption{Performance ajustada ao risco no período de teste (TopK-Drop, $k=50$, $n=5$, custo 25~bps \textit{one-way}, taxa de referência 10\% a.a.).}
     \label{tab:performance}
     \resizebox{\textwidth}{!}{%
     \begin{tabular}{lcccccccc}
         \toprule
-        \textbf{Modelo}    & \textbf{CAGR}    & \textbf{Ret.\ Acum.} & \textbf{Excesso} & \textbf{Vol.}    & \textbf{Sharpe}  & \textbf{IR}      & \textbf{Calmar}  & \textbf{Max DD}  \\
+        \textbf{Modelo}            & \textbf{CAGR}    & \textbf{Ret.\ Acum.} & \textbf{Excesso} & \textbf{Vol.}    & \textbf{Sharpe}  & \textbf{IR}      & \textbf{Calmar}  & \textbf{Max DD}  \\
         \midrule
-        \textbf{FactorVAE} & 9{,}97\%         & 97{,}05\%            & $-$0{,}81\%      & 19{,}72\%        & $-$0{,}002       & $-$0{,}028       & 0{,}242          & 41{,}24\%        \\
-        Ibovespa           & 10{,}78\%        & 107{,}92\%           & ---              & 23{,}49\%        & 0{,}033          & ---              & 0{,}230          & 46{,}82\%        \\
-        GRU                & 6{,}69\%         & 58{,}73\%            & $-$4{,}09\%      & 21{,}96\%        & $-$0{,}151       & $-$0{,}133       & 0{,}139          & 48{,}29\%        \\
-        IPCA               & $-$2{,}23\%      & $-$14{,}89\%         & $-$13{,}01\%     & 27{,}24\%        & $-$0{,}449       & $-$0{,}382       & $-$0{,}038       & 58{,}10\%        \\
-        CA                 & 6{,}72\%         & 59{,}10\%            & $-$4{,}06\%      & 20{,}54\%        & $-$0{,}160       & $-$0{,}135       & 0{,}150          & 44{,}93\%        \\
+        \textbf{FactorVAE}         & 9{,}97\%         & 97{,}05\%            & $-$0{,}81\%      & 19{,}72\%        & $-$0{,}002       & $-$0{,}028       & 0{,}242          & 41{,}24\%        \\
+        FactorVAE (TDrisk)         & 8{,}54\%         & 79{,}49\%            & $-$2{,}24\%      & 20{,}28\%        & $-$0{,}072       & $-$0{,}076       & 0{,}197          & 43{,}33\%        \\
+        Ibovespa                   & 10{,}78\%        & 107{,}92\%           & ---              & 23{,}49\%        & 0{,}033          & ---              & 0{,}230          & 46{,}82\%        \\
+        CA                         & 6{,}72\%         & 59{,}10\%            & $-$4{,}06\%      & 20{,}54\%        & $-$0{,}160       & $-$0{,}135       & 0{,}150          & 44{,}93\%        \\
+        GRU                        & 6{,}69\%         & 58{,}73\%            & $-$4{,}09\%      & 21{,}96\%        & $-$0{,}151       & $-$0{,}133       & 0{,}139          & 48{,}29\%        \\
+        IPCA                       & $-$2{,}23\%      & $-$14{,}89\%         & $-$13{,}01\%     & 27{,}24\%        & $-$0{,}449       & $-$0{,}382       & $-$0{,}038       & 58{,}10\%        \\
         \bottomrule
     \end{tabular}}
     \fonte{Elaboração própria.}
@@ -64,14 +66,16 @@ O sinal preditivo da seção anterior é traduzido em portfólio pela estratégi
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.95\textwidth]{figuras/BKT_cumulative_excess_return.png}
-    \caption{Retorno acumulado em excesso sobre o benchmark.}
+    \caption{Retorno acumulado em excesso sobre o Ibovespa.}
     \label{fig:retorno-excesso}
 \end{figure}
 
-O FactorVAE apresenta o maior CAGR entre os modelos avaliados (9{,}97\%), seguido pelo CA (6{,}72\%) e pelo GRU (6{,}69\%). A diferença de 3{,}25~p.p.\ anualizados sobre o GRU é economicamente relevante no horizonte do teste (retorno acumulado de 97{,}05\% vs.\ 58{,}73\%). O IPCA é o único modelo com CAGR negativo ($-2{,}23$\%), o que indica que exposições lineares em características não capturam sinal suficiente para compensar os custos de transação neste universo.
+Entre os modelos avaliados, o FactorVAE apresenta o maior CAGR (9{,}97\%), seguido pelo CA (6{,}72\%) e pelo GRU (6{,}69\%). A diferença de 3{,}25 pontos percentuais anualizados sobre o GRU é economicamente relevante no horizonte do teste, traduzindo-se em retorno acumulado de 97{,}05\% contra 58{,}73\%. O IPCA é o único modelo com CAGR negativo ($-$2{,}23\%), o que indica que exposições fatoriais lineares em características técnicas não capturam sinal suficiente para compensar os custos de transação neste universo. A ordenação por CAGR reproduz qualitativamente a ordenação por Rank IC reportada na seção anterior, confirmando que a vantagem em qualidade do sinal observada cross-sectionalmente se traduz em performance econômica na estratégia long-only.
 
-O FactorVAE também registra a menor volatilidade anualizada (19{,}72\%) e o menor drawdown máximo (41{,}24\%) entre todos os modelos. Essa combinação de retorno superior e risco inferior resulta em um Sharpe de $-0{,}002$ --- praticamente neutro, dado que o CAGR da estratégia praticamente iguala a taxa de referência. O GRU, com Sharpe de $-0{,}151$, e o CA, com $-0{,}160$, ficam substancialmente abaixo. A Figura~\ref{fig:retorno-acumulado} confirma que a curva do FactorVAE se mantém acima dos demais modelos ao longo de todo o período, com menor amplitude de oscilação.
+Além do retorno superior, o FactorVAE registra a menor volatilidade anualizada (19{,}72\%) e o menor drawdown máximo (41{,}24\%) entre todos os modelos e variantes avaliados, incluindo o Ibovespa. Essa combinação de retorno mais alto entre os modelos ativos e risco mais baixo se reflete no Calmar de 0{,}242 (contra 0{,}150 do CA e 0{,}139 do GRU), métrica que normaliza o retorno anualizado pela perda máxima realizada. O Índice de Sharpe do FactorVAE fica praticamente neutro ($-$0{,}002), o que reflete que o CAGR ficou muito próximo da taxa de referência de 10\% a.a. utilizada no cálculo, e não que a estratégia falhou em gerar retorno. A Figura~\ref{fig:retorno-acumulado} confirma que a curva acumulada do FactorVAE se mantém acima dos demais modelos ao longo de todo o período de teste, com menor amplitude de oscilação visível.
 
-O resultado central, porém, é que nenhum modelo ativo supera o Ibovespa (CAGR de 10{,}78\%) em retorno absoluto no período observado. A diferença de $-0{,}81$~p.p.\ anualizados entre o FactorVAE e o Ibovespa coexiste com volatilidade 3{,}77~p.p.\ menor (19{,}72\% vs.\ 23{,}49\%) e drawdown 5{,}58~p.p.\ menor (41{,}24\% vs.\ 46{,}82\%). A Figura~\ref{fig:retorno-excesso} mostra que o retorno acumulado em excesso do FactorVAE oscila em torno de zero ao longo do período, sem tendência clara de acumulação positiva ou negativa. O FactorVAE lidera entre os modelos do experimento, mas a vantagem se materializa na dimensão de risco e não na de retorno absoluto.
+O resultado mais importante do backtest, porém, é que nenhum modelo ativo supera o Ibovespa em retorno absoluto no período observado. A diferença de $-$0{,}81 ponto percentual anualizado entre o FactorVAE e o Ibovespa coexiste com volatilidade 3{,}77 pp menor (19{,}72\% contra 23{,}49\%) e drawdown 5{,}58 pp menor (41{,}24\% contra 46{,}82\%), de modo que o FactorVAE entrega um perfil de risco mais contido do que o índice ao custo de retorno marginalmente inferior. A Figura~\ref{fig:retorno-excesso} mostra que o retorno acumulado em excesso do FactorVAE oscila em torno de zero ao longo do período sem tendência clara de acumulação positiva ou negativa. A liderança do FactorVAE dentro do conjunto de modelos do experimento se materializa, portanto, na dimensão de risco, e não na geração de alfa absoluto contra o benchmark de mercado.
 
-Essa configuração é consistente com a de \textcite{duan2022} em escala reduzida. No artigo original, o FactorVAE gera alfa positivo sobre o CSI300 com $k = 50$ em um universo de 3.000+ ativos, onde a fração selecionada ($\approx$1{,}5\%) permite maior seletividade. Na B3, $k = 50$ corresponde a $\approx$10--17\% do cross-section, o que dilui mecanicamente o poder de discriminação do sinal e reduz a margem disponível para converter ranking em retorno em excesso.
+A magnitude dos custos de transação contribui para enquadrar essa comparação. Com turnover diário próximo do limite imposto pela restrição $n/k = 10\%$, o custo de transação anualizado da estratégia atinge aproximadamente 6 pontos percentuais por ano (10\% de turnover diário multiplicado por 25~bps e por 252 pregões). O Ibovespa, por construção, não incorre nesse atrito, dado que sua composição é mantida com rebalanceamento infrequente. O sinal preditivo do FactorVAE é, portanto, robusto o suficiente para gerar retorno bruto da ordem de 16\% a.a., mas o atrito operacional de extração desse sinal absorve a maior parte do ganho potencial sobre o benchmark passivo.
+
+A variante TDrisk testa se o desvio-padrão por ativo $\sigma_y^{(i)}$, entregue analiticamente pelo Decoder, adiciona valor econômico quando incorporado ao critério de seleção. Os resultados são negativos no recorte avaliado. O TDrisk apresenta CAGR de 8{,}54\%, 1{,}43 pp inferior ao FactorVAE padrão, com volatilidade marginalmente maior (20{,}28\% contra 19{,}72\%) e drawdown máximo também maior (43{,}33\% contra 41{,}24\%). A penalização por incerteza, contraintuitivamente, não melhora o perfil de risco realizado e degrada o retorno. Parte da diferença de retorno é atenuada pelo turnover menor do TDrisk, que reduz custos de transação em cerca de 1{,}2 pp por ano, mas a queda de 1{,}43 pp no CAGR indica que a degradação do sinal bruto, próxima de 2{,}6 pp por ano, supera essa economia. A interpretação consistente com os dados é de que o $\sigma_y^{(i)}$ produzido pelo modelo no recorte brasileiro não é um previsor calibrado do risco realizado por ativo capaz de melhorar decisões de alocação, e que penalizar ativos de alta incerteza preditiva remove sinal informativo do ranqueamento.
