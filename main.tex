@@ -81,9 +81,18 @@
 \usepackage{mathtools} % extensão de amsmath
 \usepackage{physics} % notação matemática simplificada
 
-\usepackage{
-    lipsum
-} % geração de texto dummy (apenas para teste de formatação; permitido excluir)
+
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}      % setas Stealth
+\usetikzlibrary{shapes.geometric} % diamond, ellipse, trapezium
+\usetikzlibrary{shapes.symbols}   % signal (hexágono do decoder)
+\usetikzlibrary{shapes.misc}      % chamfered rectangle, rounded rectangle
+\usetikzlibrary{positioning}      % above=of, right=of
+\usetikzlibrary{calc}             % ($(node) + (x,y)$) no decoder
+\usepackage{bm}                   % \bm{} no decoder e preditor
+\usepackage{neuralnetwork}
+\usepackage{xstring}
+\usetikzlibrary{fit,positioning}
 
 % ----
 % Configurações de aparência do PDF final

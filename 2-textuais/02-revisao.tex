@@ -115,11 +115,27 @@ arquitetura completa do \textit{FactorVAE} é especificada no Capítulo~\ref{cap
 Um autoencoder determinístico aprende uma função de compressão e reconstrução ponto a ponto: dado
 um vetor de entrada $x$, o codificador produz um único ponto $z$ no espaço latente, e o
 decodificador reconstrói $x$ a partir desse ponto. A representação latente é determinística --- a
-mesma entrada produz sempre o mesmo $z$. Um autoencoder variacional \parencite{kingma2014}, por
+mesma entrada produz sempre o mesmo $z$. 
+
+\begin{figure}[ht]
+    \centering
+    \input{figuras/autoencoder}
+    \caption{Arquitetura Neural do Autoencoder.}
+    \label{fig:autoencoder}
+\end{figure}
+
+Um autoencoder variacional \parencite{kingma2014}, por
 contraste, aprende uma distribuição sobre o espaço latente: dado $x$, o codificador produz os
 parâmetros $(\mu_\phi(x),\, \sigma_\phi(x))$ de uma gaussiana $q_\phi(z|x)$, e a representação
 latente é amostrada dessa distribuição a cada passagem pelo modelo. A representação de $x$ não é
 um ponto fixo, mas uma região do espaço latente com forma e incerteza aprendidas.
+
+\begin{figure}[ht]
+    \centering
+    \input{figuras/variational_autoencoder}
+    \caption{Arquitetura Neural do Variational Autoencoder.}
+    \label{fig:variational_autoencoder}
+\end{figure}
 
 Essa distinção tem consequências diretas em dados financeiros. Retornos de ações têm razão
 sinal-ruído muito baixa: boa parte da variação diária não é explicada por nenhuma fonte sistemática

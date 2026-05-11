@@ -1,83 +1,78 @@
+\definecolor{GreenD}{HTML}{3B6E10}
+\definecolor{GreenL}{HTML}{E3F2D5}
+
 \begin{tikzpicture}[
-    % Estilos de nó baseados na imagem anterior
-    base/.style={draw, thick, align=center, inner sep=4pt, font=\large},
-    block/.style={base, rectangle, minimum width=3.0cm, minimum height=1.0cm},
-    % Forma hexagonal (usando 'signal' para imitar o original)
-    hex/.style={base, signal, signal to=west and east, minimum height=0.9cm, inner sep=6pt},
-    round/.style={base, rounded rectangle, minimum height=0.9cm},
-    op/.style={draw, thick, circle, minimum size=0.8cm, inner sep=0pt, font=\LARGE},
-    % Estilos de texto
-    label_style/.style={font=\Large, align=center},
-    % Setas e Linhas
-    line/.style={draw, thick, -Stealth},
-    flowline/.style={draw, thick}
+    font=\small,
+    >={Stealth[length=2.2mm, width=1.5mm]},
+    %--- tensor de entrada (cinza, igual a arquitetura.tex)
+    tensor/.style={
+        draw=gray!55, thick, rounded corners=8pt,
+        fill=gray!9, minimum width=2.8cm, minimum height=0.65cm,
+        align=center},
+    %--- bloco de rede (verde chamfered, igual a arquitetura.tex)
+    net/.style={
+        draw=GreenD, very thick, chamfered rectangle,
+        chamfered rectangle xsep=0.22cm, fill=GreenL,
+        minimum width=2.6cm, minimum height=0.65cm,
+        align=center},
+    %--- variável intermediária (verde tracejado)
+    rv/.style={
+        draw=GreenD, thick, dashed, rounded corners=8pt,
+        fill=GreenL!50, minimum width=2.6cm, minimum height=0.65cm,
+        align=center},
 ]
 
-    % --- 1. Entrada Inferior (fora da caixa) ---
-    \node[hex] (factors) at (0,0) {Factors $\bm{z}$};
-    \node[round, right=1.5cm of factors] (latent) {Latent \\ features $e$};
+%% ── ENTRADAS (fora da caixa) ─────────────────────────────────
+% e entra pelo topo; z entra pela esquerda no nível de ⊗
+\node[tensor] (e)       at ( 0.0, 7.6) {Embeddings $e$};
+\node[tensor] (factors) at (-5.0, 3.8) {Fatores $z$};
 
-    % --- 2. Container Principal (A caixa grande) ---
-    \node[draw, thick, fill=gray!10, rounded corners=15pt, 
-          minimum width=9.0cm, minimum height=7.5cm,
-          above=0.3cm of latent, anchor=south, xshift=-0.75cm] (container) {};
+%% ── RAMO BETA (esquerda) E RAMO ALPHA (direita) ─────────────
+\node[net] (betalayer)  at (-1.9, 6.25) {Beta Layer $\varphi_{\beta}$};
+\node[net] (alphalayer) at ( 1.9, 6.25) {Alpha Layer $\pi_{\alpha}$};
 
-    % --- 3. Camadas e Blocos de Processamento (dentro da caixa) ---
-    % Camadas (Cinza)
-    \node[block, fill=gray!40, above=0.7cm of latent.north, anchor=south, xshift=-1.75cm] (beta_layer) {Beta Layer \\ $\varphi_{\text{beta}}$};
-    \node[block, fill=gray!40, right=0.5cm of beta_layer] (alpha_layer) {Alpha Layer \\ $\pi_{\text{alpha}}$};
+\node[rv] (beta)  at (-1.9, 5.05) {Exposições $\beta$};
+\node[rv] (alpha) at ( 1.9, 5.05) {Componente $\alpha$};
 
-    % Exposição e Alpha (Brancos)
-    \node[round, fill=white, above=1.0cm of beta_layer] (exposure) {Exposure $\bm{\beta}$};
-    \node[hex, fill=white, above=1.0cm of alpha_layer] (alpha) {Alpha $\bm{\alpha}$};
+%% ── OPERADORES ───────────────────────────────────────────────
+\node[draw=GreenD, very thick, circle,
+      minimum size=0.78cm, fill=white, inner sep=0pt, font=\normalsize]
+    (otimes) at (-1.9, 3.8) {$\otimes$};
 
-    % --- 4. Operadores Matemáticos ---
-    \node[op, above=1.5cm of exposure.west, anchor=south, xshift=-0.5cm] (mul) {$\otimes$};
-    \node[op, above=1.2cm of exposure, xshift=1.75cm] (add) {$\oplus$};
+\node[draw=GreenD, very thick, circle,
+      minimum size=0.78cm, fill=white, inner sep=0pt, font=\normalsize]
+    (oplus) at (0.0, 2.6) {$\oplus$};
 
-    % --- 5. Saída Superior (fora da caixa) ---
-    \node[hex, fill=white, above=0.3cm of container.north, anchor=south] (returns) {Stock returns $\hat{\bm{y}}$};
+%% ── SAÍDA (fora da caixa, base) ─────────────────────────────
+\node[rv, fill=GreenL, draw=GreenD, very thick] (yhat) at (0, 0.35)
+    {Retorno reconstruído $\hat{y}$};
 
-    % =============================================
-    % ============ CONEXÕES (LINHAS) ==============
-    % =============================================
+%% ── CAIXA DO MÓDULO ─────────────────────────────────────────
+\draw[GreenD, thick, rounded corners=12pt]
+    (-3.45, 0.85) rectangle (3.45, 6.85);
 
-    % Linhas de Entrada para as Camadas
-    % Ponto de ramificação para 'latent features'
-    \coordinate (branch) at ($(latent.north) + (0, 0.4cm)$);
-    \draw[flowline] (latent.north) -- (branch);
-    \draw[flowline] (branch) -| (beta_layer.south);
-    \draw[flowline] (branch) -| (alpha_layer.south);
+%% ── SETAS ───────────────────────────────────────────────────
+% e bifurca para os dois ramos
+\coordinate (branch) at ($(e.south) + (0, -0.3)$);
+\draw[gray!60, thick]         (e.south) -- (branch);
+\draw[->, gray!60, thick]     (branch)  -| (betalayer.north);
+\draw[->, gray!60, thick]     (branch)  -| (alphalayer.north);
 
-    % Linhas de Camada para o próximo bloco
-    \draw[line] (beta_layer.north) -- (exposure.south);
-    \draw[line] (alpha_layer.north) -- (alpha.south);
+% z entra horizontalmente no ⊗
+\draw[->, gray!60, thick]     (factors.east)  -- (otimes.west);
 
-    % Linhas para Operadores
-    % 'Factors z' sobe para o multiplicador
-    \draw[line] (factors.north) |- (mul.west);
-    
-    % 'Exposure beta' vai para o multiplicador
-    \draw[line] (exposure.north) -| (mul.east);
+% Fluxo interno (verde)
+\draw[->, GreenD, thick]      (betalayer.south)  -- (beta.north);
+\draw[->, GreenD, thick]      (alphalayer.south) -- (alpha.north);
+\draw[->, GreenD, thick]      (beta.south)       -- (otimes.north);
+\draw[->, GreenD, thick]      (otimes.south)     |- (oplus.west);
+\draw[->, GreenD, thick]      (alpha.south)      |- (oplus.east);
 
-    % Do multiplicador para o somador
-    \draw[line] (mul.north) |- (add.west);
+% Saída
+\draw[->, GreenD, thick]      (oplus.south)      -- (yhat.north);
 
-    % Do alpha para o somador
-    \draw[line] (alpha.north) |- (add.east);
+%% ── RÓTULO ──────────────────────────────────────────────────
+\node[font=\small, anchor=north] at (0, -0.3)
+    {(b) Factor Decoder};
 
-    % Do somador para o resultado final
-    \draw[line] (add.north) -- (returns.south);
-
-    % Perna solta no canto inferior esquerdo
-    \node (dummy_start) [left=1.5cm of factors, yshift=-0.5cm] {};
-    \draw[line] (dummy_start) |- (factors.west);
-
-    % =============================================
-    % ============ ROTULO DA FIGURA ===============
-    % =============================================
-    % Posicionado centralizado abaixo da caixa
-    \node[font=\LARGE\bfseries, text width=5cm, align=center, below=1.5cm of latent] (caption) 
-    {(b) \quad Factor decoder};
-
-\end{tikzpicture}%
+\end{tikzpicture}

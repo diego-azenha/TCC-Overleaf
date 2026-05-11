@@ -1,46 +1,82 @@
+\definecolor{VioletD}{HTML}{534AB7}
+\definecolor{VioletL}{HTML}{EEEDFE}
+\definecolor{TealD}{HTML}{0A6B52}
+\definecolor{TealL}{HTML}{D8F2EA}
+\definecolor{GreenD}{HTML}{3B6E10}
+\definecolor{GreenL}{HTML}{E3F2D5}
+\definecolor{CoralD}{HTML}{993C1D}
+\definecolor{CoralL}{HTML}{FAECE7}
+
 \begin{tikzpicture}[
-    shorten >=1pt, shorten <=1pt,
-    neuron/.style={circle, draw, minimum size=4ex, thick},
-    legend/.style={font=\large\bfseries},
-  ]
+    font=\scriptsize,
+    neuron/.style={circle, draw, thick, minimum size=0.42cm, inner sep=0pt},
+    conn/.style={gray!28, thin},
+]
 
-  % encoder
-  \drawNodes{encoder}{{{,,,,}, {,,,}, {,,}}}
-  \denselyConnectNodes{encoder}{{5, 4, 3}}
+%% ── COORDENADAS ──────────────────────────────────────────────────
+%% Encoder: 5→4→3 | μ/σ (3+3) | z (3) | Decoder: 4→5
+%% Espaçamento vertical: 0.65cm; colunas a cada 1.5cm
+\foreach \i in {1,...,5}  \coordinate (I\i)   at (0.0, {(3.0-\i)*0.65});
+\foreach \i in {1,...,4}  \coordinate (Ea\i)  at (1.5, {(2.5-\i)*0.65});
+\foreach \i in {1,...,3}  \coordinate (Eb\i)  at (3.0, {(2.0-\i)*0.65});
+%% μ: 3 nós no bloco superior; σ: 3 nós no bloco inferior
+\foreach \i in {1,...,3}  \coordinate (MU\i)  at (4.6, {1.50-(\i-1)*0.55});
+\foreach \i in {1,...,3}  \coordinate (SIG\i) at (4.6, {-0.40-(\i-1)*0.55});
+%% z amostrado: 3 nós centralizados
+\foreach \i in {1,...,3}  \coordinate (Z\i)   at (6.3, {(2.0-\i)*0.65});
+\foreach \i in {1,...,4}  \coordinate (Da\i)  at (7.9, {(2.5-\i)*0.65});
+\foreach \i in {1,...,5}  \coordinate (O\i)   at (9.5, {(3.0-\i)*0.65});
 
-  % decoder
-  \begin{scope}[xshift=11cm]
-    \drawNodes{decoder}{{{,,}, {,,,}, {,,,,}}}
-    \denselyConnectNodes{decoder}{{3, 4, 5}}
-  \end{scope}
+%% ── CONEXÕES (abaixo dos blocos e nós) ───────────────────────────
+\foreach \i in {1,...,5} \foreach \j in {1,...,4} \draw[conn] (I\i)   -- (Ea\j);
+\foreach \i in {1,...,4} \foreach \j in {1,...,3} \draw[conn] (Ea\i)  -- (Eb\j);
+\foreach \i in {1,...,3} \foreach \j in {1,...,3} \draw[conn] (Eb\i)  -- (MU\j);
+\foreach \i in {1,...,3} \foreach \j in {1,...,3} \draw[conn] (Eb\i)  -- (SIG\j);
+\foreach \i in {1,...,3} \foreach \j in {1,...,3} \draw[conn] (MU\i)  -- (Z\j);
+\foreach \i in {1,...,3} \foreach \j in {1,...,3} \draw[conn] (SIG\i) -- (Z\j);
+\foreach \i in {1,...,3} \foreach \j in {1,...,4} \draw[conn] (Z\i)   -- (Da\j);
+\foreach \i in {1,...,4} \foreach \j in {1,...,5} \draw[conn] (Da\i)  -- (O\j);
 
-  % mu, sigma, sample nodes
-  \foreach \idx in {1,...,3} {
-      \coordinate[neuron, right=2 of encoder-3-2, yshift=\idx cm,, fill=yellow, fill opacity=0.2] (mu-\idx);
-      \coordinate[neuron, right=2 of encoder-3-2, yshift=-\idx cm, fill=blue, fill opacity=0.1] (sigma-\idx);
-      \coordinate[neuron, right=4 of encoder-3-2, yshift=\idx cm-2cm, fill=green, fill opacity=0.1] (sample-\idx);
-    }
+%% ── BLOCOS μ, σ, z (sobre conexões, abaixo dos nós) ─────────────
+%% μ: MU1=(4.6,1.50), MU3=(4.6,0.40) → caixa y=[0.10, 1.80]
+\draw[VioletD, thick, rounded corners=4pt, fill=VioletL!55]
+    (4.25, 0.10) rectangle (4.95, 1.80);
+\node[font=\scriptsize\bfseries, VioletD, anchor=south] at (4.60,  1.80) {$\mu$};
 
-  % mu, sigma, sample boxes
-  \node [label=$\mu$, fit=(mu-1) (mu-3), draw, fill=yellow, opacity=0.45] (mu) {};
-  \node [label=$\sigma$, fit=(sigma-1) (sigma-3), draw, fill=blue, opacity=0.3] (sigma) {};
-  \node [label=sample, fit=(sample-1) (sample-3), draw, fill=green, opacity=0.3] (sample) {};
+%% σ: SIG1=(4.6,−0.40), SIG3=(4.6,−1.50) → caixa y=[−1.80, −0.10]
+\draw[CoralD, thick, rounded corners=4pt, fill=CoralL!55]
+    (4.25, -1.80) rectangle (4.95, -0.10);
+\node[font=\scriptsize\bfseries, CoralD, anchor=north] at (4.60, -1.80) {$\sigma$};
 
-  % mu, sigma, sample connections
-  \draw[->] (mu.east) edge (sample.west) (sigma.east) -- (sample.west);
-  \foreach \a in {1,2,3}
-  \foreach \b in {1,2,3} {
-      \draw[->] (encoder-3-\a) -- (mu-\b);
-      \draw[->] (encoder-3-\a) -- (sigma-\b);
-      \draw[->] (sample-\a) -- (decoder-1-\b);
-    }
+%% z: Z1=(6.3,0.65), Z3=(6.3,−0.65) → caixa y=[−0.95, 0.95]
+\draw[GreenD, thick, rounded corners=4pt, fill=GreenL!55]
+    (5.95, -0.95) rectangle (6.65, 0.95);
+\node[font=\scriptsize\bfseries, GreenD, anchor=south] at (6.30,  0.95) {$z$};
 
-  % input + output labels
-  \foreach \idx in {1,...,5} {
-      \node[left=0 of encoder-1-\idx] {$x_\idx$};
-      \node[right=0 of decoder-3-\idx] {$\hat x_\idx$};
-    }
-  \node[above=0.1 of encoder-1-1] {input};
-  \node[above=0.1 of decoder-3-1] {output};
+%% ── NÓS (sobre os blocos) ────────────────────────────────────────
+\foreach \i in {1,...,5} {
+    \node[neuron, fill=gray!20, draw=gray!55] at (I\i)  {};
+    \node[neuron, fill=gray!20, draw=gray!55] at (O\i)  {};
+}
+\foreach \i in {1,...,4} {
+    \node[neuron, fill=TealL, draw=TealD] at (Ea\i) {};
+    \node[neuron, fill=TealL, draw=TealD] at (Da\i) {};
+}
+\foreach \i in {1,...,3} {
+    \node[neuron, fill=TealL,   draw=TealD]   at (Eb\i)  {};
+    \node[neuron, fill=VioletL, draw=VioletD] at (MU\i)  {};
+    \node[neuron, fill=CoralL,  draw=CoralD]  at (SIG\i) {};
+    \node[neuron, fill=GreenL,  draw=GreenD]  at (Z\i)   {};
+}
+
+%% ── RÓTULOS x_i e x̂_i ──────────────────────────────────────────
+\foreach \i in {1,...,5} {
+    \node[font=\scriptsize, anchor=east]  at ($(I\i)+(-0.27,0)$) {$x_\i$};
+    \node[font=\scriptsize, anchor=west] at ($(O\i)+(0.27,0)$) {$\hat{x}_\i$};
+}
+
+%% ── TÍTULOS ──────────────────────────────────────────────────────
+\node[font=\scriptsize\bfseries, anchor=south] at (0.0, 1.65) {Entrada};
+\node[font=\scriptsize\bfseries, anchor=south] at (9.5, 1.65) {Saída};
 
 \end{tikzpicture}

@@ -33,6 +33,13 @@ A escala do universo difere substancialmente do estudo original de \textcite{dua
 
 A amostra é dividida em três subperíodos contíguos sem sobreposição temporal. O período de treinamento é utilizado para estimação dos parâmetros do modelo. O período de validação é usado exclusivamente para seleção do checkpoint pelo critério de Rank IC e para parada antecipada do treinamento. O período de teste, intocado durante todas as etapas anteriores, fornece a avaliação reportada no Capítulo~\ref{cap:resultados}. O período de teste cobre múltiplos regimes macroeconômicos relevantes para o mercado brasileiro, incluindo o crash de Covid-19 em 2020, o ciclo de aperto monetário de 2021 e 2022 e a transição política de 2023, o que permite avaliar a estabilidade do sinal preditivo em diferentes configurações de risco e liquidez.
 
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figuras/trainvaltestsplit.png}
+    \caption{Divisão temporal da amostra em treinamento, validação e teste.}
+    \label{fig:trainvaltest-split}
+\end{figure}
+
 
 \subsection{Pré-processamento}
 \label{subsec:preprocessing}
@@ -63,6 +70,15 @@ O FactorVAE \parencite{duan2022} modela os retornos de cada ativo como soma de u
 em que $\alpha^{(i)}(x_t) \in \mathbb{R}$ é o componente idiossincrático esperado do ativo $i$, $\beta^{(i)}(x_t) \in \mathbb{R}^K$ é o vetor de exposições fatoriais, $z_{t+1} \in \mathbb{R}^K$ é o vetor de $K$ fatores latentes e $\varepsilon_{t+1}^{(i)}$ é o resíduo idiossincrático com média zero. A notação funcional $\alpha(x_t)$ e $\beta(x_t)$ explicita que essas quantidades são funções aprendidas do tensor de características $x_t$, e não parâmetros fixos estimados por regressão.
 
 O modelo é composto por quatro blocos. O Feature Extractor comprime a janela temporal de características de cada ativo em um embedding de dimensão fixa. Dois módulos paralelos, o Factor Encoder e o Factor Predictor, produzem distribuições sobre os fatores latentes a partir de conjuntos de informação distintos, implementando o esquema professor-aluno descrito adiante. O Factor Decoder combina os embeddings com os parâmetros dos fatores para produzir a distribuição preditiva do retorno de cada ativo em forma fechada. A configuração adotada neste trabalho fixa $K = 8$ fatores latentes, $H = 20$ unidades de dimensão oculta nas representações internas e $M = 16$ portfólios construídos pelo codificador; os valores de $T$ e $C$ foram definidos na Seção~\ref{sec:formulacao}.
+
+A Figura~\ref{fig:arquitetura} sintetiza o fluxo de informação entre os quatro blocos e evidencia que os caminhos ativos no treinamento e na inferência diferem. Durante a estimação dos parâmetros, o Factor Encoder participa do circuito e o Decoder recebe os parâmetros da posterior $q(z \mid x_t, y_t)$; em produção, o Encoder é descartado e o Decoder opera sobre a prior $p(z \mid x_t)$ produzida pelo Factor Predictor. As subseções seguintes detalham cada bloco na ordem em que a informação flui pelo modelo durante o treinamento.
+
+\begin{figure}[ht]
+    \centering
+    \input{figuras/arquitetura}
+    \caption{Arquitetura geral do FactorVAE}
+    \label{fig:arquitetura}
+\end{figure}
 
 
 \subsection{Feature Extractor}
@@ -114,9 +130,16 @@ O FactorVAE trata os fatores latentes $z$ como variáveis aleatórias com distri
 
 Para cada portfólio $j$, os pesos formam uma distribuição sobre os $N_t$ ativos, e o retorno do portfólio é $y_p^{(j)} = \sum_i y^{(i)} \cdot a_p^{(i,j)}$, produzindo um vetor $y_p \in \mathbb{R}^M$ de dimensão fixa. A softmax é aplicada ao longo da dimensão dos ativos, de modo que os pesos sobre os ativos somem 1 dentro de cada portfólio, direção de normalização que corresponde à interpretação econômica de portfólio. Os pesos dependem exclusivamente dos embeddings, sem acesso direto aos retornos: os retornos entram apenas na multiplicação final, quando os pesos já estão definidos, o que evita que a construção dos portfólios seja contaminada pelo ruído dos retornos individuais.
 
-No segundo estágio, o vetor $y_p$ é transformado nos parâmetros da posterior por duas projeções lineares: $\mu_{\text{post}} = W_\mu \, y_p + b_\mu$ e $\sigma_{\text{post}} = \text{Softplus}(W_\sigma \, y_p + b_\sigma)$. A função Softplus, definida por $\log(1 + \exp(x))$, garante positividade estrita do desvio-padrão.
+No segundo estágio, o vetor $y_p$ é transformado nos parâmetros da posterior por duas projeções lineares: $\mu_{\text{post}} = W_\mu \, y_p + b_\mu$ e $\sigma_{\text{post}} = \text{Softplus}(W_\sigma \, y_p + b_\sigma)$. A função Softplus, definida por $\log(1 + \exp(x))$, garante positividade estrita do desvio-padrão. A Figura~\ref{fig:encoder} sintetiza o fluxo do módulo, da agregação dos retornos individuais nos $M$ portfólios internos até a produção dos parâmetros da posterior.
 
-\paragraph{Factor Predictor.} O Predictor recebe os embeddings $\{e^{(i)}\}_{i=1}^{N_t}$ e produz $p(z \mid x_t) = \mathcal{N}(\mu_{\text{prior}},\, \mathrm{diag}(\sigma_{\text{prior}}^2))$. Sua tarefa é agregar informação de todos os ativos do cross-section para inferir o estado dos $K$ fatores de mercado usando exclusivamente os padrões codificados nos embeddings. Para isso, o módulo utiliza $K$ cabeças de atenção independentes, uma por fator latente. Cada cabeça $k$ executa quatro operações. Os embeddings são projetados linearmente em vetores de \textit{key} e \textit{value} ($k^{(i)} = W_{\text{key}}^{(k)} e^{(i)}$, $v^{(i)} = W_{\text{value}}^{(k)} e^{(i)}$). Cada cabeça possui um vetor \textit{query} $q^{(k)} \in \mathbb{R}^H$ aprendível, ou seja, um parâmetro livre e não uma função dos dados, e a similaridade cosseno entre $q^{(k)}$ e cada \textit{key} mede o quanto o ativo $i$ é relevante para o fator $k$:
+\begin{figure}[ht]
+    \centering
+    \input{figuras/encoder}
+    \caption{Arquitetura do Factor Encoder}
+    \label{fig:encoder}
+\end{figure}
+
+\paragraph{Factor Predictor.} 
 
 \begin{equation}
     \text{score}^{(i)} = \frac{{q^{(k)}}^\top k^{(i)}}{\|q^{(k)}\| \cdot \|k^{(i)}\|}
@@ -132,7 +155,14 @@ Os scores negativos são zerados por um gate ReLU e os positivos são normalizad
 
 A escolha de um gate ReLU em vez da softmax convencional \parencite{vaswani2017} produz pesos esparsos: a softmax atribui peso positivo a todos os ativos, diluindo potencialmente o sinal dos mais relevantes, enquanto o gate ReLU exclui inteiramente os ativos com score negativo. Em um cross-section da ordem de algumas centenas de ativos, essa esparsidade evita que a representação de um fator seja contaminada pela contribuição de ativos que não carregam informação sobre ele. Na implementação, quando todos os scores são negativos, os pesos colapsam para uma distribuição uniforme como \textit{fallback}.
 
-A representação de cada cabeça $k$ é a soma ponderada dos \textit{values}, $h_k = \sum_i a^{(i)} v^{(i)}$. As $K$ representações são então passadas por uma rede com uma camada oculta (LeakyReLU) e duas cabeças de saída que produzem $\mu_{\text{prior}}^{(k)}$ e $\sigma_{\text{prior}}^{(k)}$. Os pesos dessa rede são compartilhados entre todos os $K$ fatores: a diferenciação entre fatores vem inteiramente das representações $h_k$, que são distintas porque cada cabeça de atenção possui seus próprios pesos de projeção e sua própria \textit{query}.
+A representação de cada cabeça $k$ é a soma ponderada dos \textit{values}, $h_k = \sum_i a^{(i)} v^{(i)}$. As $K$ representações são então passadas por uma rede com uma camada oculta (LeakyReLU) e duas cabeças de saída que produzem $\mu_{\text{prior}}^{(k)}$ e $\sigma_{\text{prior}}^{(k)}$. Os pesos dessa rede são compartilhados entre todos os $K$ fatores: a diferenciação entre fatores vem inteiramente das representações $h_k$, que são distintas porque cada cabeça de atenção possui seus próprios pesos de projeção e sua própria \textit{query}. A Figura~\ref{fig:preditor} ilustra a estrutura multi-cabeça e a rede de saída compartilhada que mapeia as representações por fator nos parâmetros da prior.
+
+\begin{figure}[ht]
+    \centering
+    \input{figuras/preditor}
+    \caption{Arquitetura do Factor Predictor}
+    \label{fig:preditor}
+\end{figure}
 
 
 \subsection{Decodificação e distribuição preditiva}
@@ -159,7 +189,14 @@ O retorno reconstruído de cada ativo é $\hat{y}^{(i)} = \alpha^{(i)} + \beta^{
     \sigma_y^{(i)} &= \sqrt{\left(\sigma_\alpha^{(i)}\right)^2 + \sum_{k=1}^{K} \left(\beta^{(i,k)}\right)^2 \left(\sigma_z^{(k)}\right)^2} \label{eq:sigma-preditivo}
 \end{align}
 
-A derivação segue de propriedades da distribuição normal. A média de uma soma de variáveis independentes é a soma das médias. Para a variância, como os fatores são modelados com covariância diagonal e $\alpha^{(i)}$ é independente de $z$, vale $\text{Var}(\alpha^{(i)} + \beta^{(i)\top} z) = (\sigma_\alpha^{(i)})^2 + \sum_k (\beta^{(i,k)})^2 (\sigma_z^{(k)})^2$. O termo $(\beta^{(i,k)})^2 (\sigma_z^{(k)})^2$ mostra como a incerteza do fator $k$ se propaga para a incerteza do ativo $i$, amplificada pela exposição ao quadrado.
+A derivação segue de propriedades da distribuição normal. A média de uma soma de variáveis independentes é a soma das médias. Para a variância, como os fatores são modelados com covariância diagonal e $\alpha^{(i)}$ é independente de $z$, vale $\text{Var}(\alpha^{(i)} + \beta^{(i)\top} z) = (\sigma_\alpha^{(i)})^2 + \sum_k (\beta^{(i,k)})^2 (\sigma_z^{(k)})^2$. O termo $(\beta^{(i,k)})^2 (\sigma_z^{(k)})^2$ mostra como a incerteza do fator $k$ se propaga para a incerteza do ativo $i$, amplificada pela exposição ao quadrado. A Figura~\ref{fig:decoder} sintetiza a estrutura do módulo, com as duas sub-redes paralelas operando sobre o embedding e a combinação analítica que produz a distribuição preditiva.
+
+\begin{figure}[ht]
+    \centering
+    \input{figuras/decoder}
+    \caption{Arquitetura do Factor Decoder}
+    \label{fig:decoder}
+\end{figure}
 
 Essa composição analítica é uma vantagem computacional em relação ao VAE padrão, no qual a log-verossimilhança é avaliada com $z$ amostrado da posterior via \textit{reparameterization trick}, introduzindo variância no estimador do gradiente. No FactorVAE, $\mu_y^{(i)}$ e $\sigma_y^{(i)}$ são funções determinísticas dos parâmetros, e a NLL é calculada diretamente pela fórmula da gaussiana. O $\sigma_y^{(i)}$ quantifica a incerteza preditiva total para cada ativo, combinando a incerteza idiossincrática $\sigma_\alpha^{(i)}$ com a sistemática $\sum_k (\beta^{(i,k)})^2 (\sigma_z^{(k)})^2$, oferecendo uma medida de risco por ativo que é subproduto direto da arquitetura.
 
@@ -194,7 +231,7 @@ Minimizar esse termo força o Predictor, que não vê retornos futuros, a produz
 
 A implementação inclui ainda um mecanismo opcional de \textit{free bits}, que estabelece um piso de KL por dimensão latente abaixo do qual o gradiente do termo KL é zerado, evitando colapso de unidades latentes. No experimento reportado neste trabalho o piso é fixado em zero, ou seja, o mecanismo está desativado e o KL completo é otimizado sem clamping.
 
-No treinamento, todos os quatro blocos estão ativos: o Feature Extractor produz os embeddings; o Encoder recebe embeddings e retornos contemporâneos para produzir a posterior; o Predictor recebe apenas embeddings para produzir a prior; o Decoder recebe os parâmetros da posterior para produzir a distribuição do retorno reconstruído. Na inferência, o Encoder é descartado. O fluxo reduz-se a Feature Extractor $\to$ Factor Predictor $\to$ Factor Decoder, e o Predictor produz $\mu_{\text{prior}}$ e $\sigma_{\text{prior}}$ que são passados diretamente ao Decoder sem amostragem. A previsão pontual de retorno usada para ranqueamento é $\mu_y^{(i)}$, e a incerteza associada é $\sigma_y^{(i)}$.
+No treinamento, todos os quatro blocos estão ativos: o Feature Extractor produz os embeddings; o Encoder recebe embeddings e retornos contemporâneos para produzir a posterior; o Predictor recebe apenas embeddings para produzir a prior; o Decoder recebe os parâmetros da posterior para produzir a distribuição do retorno reconstruído. Na inferência, o Encoder é descartado. O fluxo reduz-se a Feature Extractor $\to$ Factor Predictor $\to$ Factor Decoder, e o Predictor produz $\mu_{\text{prior}}$ e $\sigma_{\text{prior}}$ que são passados diretamente ao Decoder sem amostragem, conforme já indicado pelas setas tracejada e contínua da Figura~\ref{fig:arquitetura}. A previsão pontual de retorno usada para ranqueamento é $\mu_y^{(i)}$, e a incerteza associada é $\sigma_y^{(i)}$.
 
 A otimização utiliza Adam, com critério de parada antecipada baseado no Rank IC do conjunto de validação. O peso $\gamma$ do termo KL parte de zero e cresce linearmente nos primeiros 500 passos de otimização (mecanismo conhecido como \textit{KL warmup}), permitindo que o Encoder estabilize uma posterior útil antes de o Predictor ser pressionado a imitá-la.
 
