@@ -74,7 +74,7 @@ sobrevivência.
 
 A quantidade de ativos disponíveis ao longo da amostra é ilustrada na
 Figura~\ref{fig:trainvaltest-split}. O universo parte de aproximadamente 80 ativos em
-2005, cresce para a faixa de 175--195 ao longo do período de treinamento, com mínimo
+2005 --- período anterior ao início do treinamento (01/01/2007), utilizado apenas para o cômputo das janelas de características ---, cresce para a faixa de 175--195 ao longo do período de treinamento, com mínimo
 de cerca de 145 por volta de 2015. No período de validação o universo permanece ao
 redor de 175--180 ativos. Já no período de teste, o universo parte de cerca de 175
 ativos, expande-se até o pico de aproximadamente 280 ativos por volta de 2021, e
@@ -271,7 +271,7 @@ em produção. O Predictor opera em ambas as fases: no treinamento, como aluno q
 aprende a imitar a posterior do Encoder; na inferência, como único módulo responsável
 pelos fatores.
 
-\paragraph{Factor Encoder.}
+\subsubsection{Factor Encoder}
 O Encoder recebe os embeddings $\{e^{(i)}\}_{i=1}^{N_t}$ e os retornos $y_t \in
 \mathbb{R}^{N_t}$, e produz $q(z \mid x_t, y_t) = \mathcal{N}(\mu_{\text{post}},\,
 \mathrm{diag}(\sigma_{\text{post}}^2))$. O processamento ocorre em dois estágios. O
@@ -283,8 +283,8 @@ cujos pesos dependem dos embeddings. Os pesos são calculados aplicando uma proj
 linear aos embeddings, seguida de softmax ao longo da dimensão dos ativos:
 
 \begin{equation}
-    a_p^{(i,j)} = \frac{\exp\!\left(w_p\, e^{(i)} + b_p\right)^{(j)}}{\sum_{i'=1}^{N_t}
-    \exp\!\left(w_p\, e^{(i')} + b_p\right)^{(j)}}
+    a_p^{(i,j)} = \frac{\exp\left(w_p\, e^{(i)} + b_p\right)^{(j)}}{\sum_{i'=1}^{N_t}
+    \exp\left(w_p\, e^{(i')} + b_p\right)^{(j)}}
     \label{eq:portfolio-weights}
 \end{equation}
 
@@ -312,7 +312,7 @@ individuais nos $M$ portfólios internos até a produção dos parâmetros da po
     \label{fig:encoder}
 \end{figure}
 
-\paragraph{Factor Predictor.}
+\subsubsection{Factor Predictor}
 O Predictor extrai a prior $p(z \mid x_t)$ exclusivamente dos embeddings, sem acesso a
 retornos futuros. Cada um dos $K$ fatores latentes é produzido por uma cabeça de
 atenção independente, implementando um mecanismo de atenção multi-cabeça com gate ReLU
@@ -617,7 +617,7 @@ A escolha da correlação de Spearman em lugar da correlação de Pearson reflet
 natureza da estratégia de portfólio adotada na subseção seguinte: a estratégia depende
 exclusivamente da ordenação dos ativos, não dos níveis absolutos previstos. Métricas
 baseadas em níveis (como erro quadrático médio) penalizam diferenças de escala que são
-economicamente irrelevantes para construção de portfólio long-only TopK.
+economicamente irrelevantes para construção de portfólio \textit{long-only} TopK.
 
 O Rank IC médio sobre o conjunto de teste mede a força média do sinal de ranqueamento.
 O Rank ICIR, definido como a razão entre a média e o desvio-padrão das observações
