@@ -74,17 +74,18 @@ sobrevivência.
 
 A quantidade de ativos disponíveis ao longo da amostra é ilustrada na
 Figura~\ref{fig:trainvaltest-split}. O universo parte de aproximadamente 80 ativos em
-2005 --- período anterior ao início do treinamento (01/01/2007), utilizado apenas para o cômputo das janelas de características ---, cresce para a faixa de 175--195 ao longo do período de treinamento, com mínimo
-de cerca de 145 por volta de 2015. No período de validação o universo permanece ao
-redor de 175--180 ativos. Já no período de teste, o universo parte de cerca de 175
-ativos, expande-se até o pico de aproximadamente 280 ativos por volta de 2021, e
-recua para a faixa de 210--220 nos anos finais. Essa escala é substancialmente menor
-do que a do estudo original de \textcite{duan2022}, que opera com mais de 3.000 ativos
-no mercado A-share chinês. A diferença condiciona a interpretação da estratégia de
-portfólio adotada na avaliação: o parâmetro $k = 50$ da estratégia TopK-Drop,
-idêntico ao do paper original, corresponde a aproximadamente 1,5\% do universo chinês,
-mas a entre 20\% e 25\% do universo brasileiro no período de teste, o que reduz a
-margem disponível para discriminação por ranqueamento.
+2005 --- período anterior ao início do treinamento (01/01/2007), utilizado apenas para
+o cômputo das janelas de características ---, cresce para a faixa de 175--195 ao longo
+do período de treinamento, com mínimo de cerca de 145 por volta de 2015. No período
+de validação o universo permanece ao redor de 175--180 ativos. Já no período de teste,
+o universo parte de cerca de 175 ativos, expande-se até o pico de aproximadamente 280
+ativos por volta de 2021, e recua para a faixa de 210--220 nos anos finais. Essa
+escala é substancialmente menor do que a do estudo original de \textcite{duan2022},
+que opera com mais de 3.000 ativos no mercado A-share chinês. A diferença condiciona a
+interpretação da estratégia de portfólio adotada na avaliação: o parâmetro $k = 50$ da
+estratégia TopK-Drop, idêntico ao do paper original, corresponde a aproximadamente
+1,5\% do universo chinês, mas a entre 20\% e 25\% do universo brasileiro no período de
+teste, o que reduz a margem disponível para discriminação por ranqueamento.
 
 
 \subsection{Período e divisão da amostra}
@@ -169,18 +170,19 @@ O FactorVAE \parencite{duan2022} modela os retornos de cada ativo como soma de u
 componente idiossincrático e um componente sistemático linear nos fatores latentes:
 
 \begin{equation}
-    r_{t+1}^{(i)} = \alpha^{(i)}(x_t) + \beta^{(i)}(x_t)^\top z_{t+1} +
-    \varepsilon_{t+1}^{(i)}
+    y^{(i)} = \alpha^{(i)}(x_t) + \beta^{(i)}(x_t)^\top z + \varepsilon^{(i)}
     \label{eq:decomp-fatorial}
 \end{equation}
 
-em que $\alpha^{(i)}(x_t) \in \mathbb{R}$ é o componente idiossincrático esperado do
+em que $y^{(i)}$ é o retorno forward definido na Equação~\ref{eq:retorno-alvo},
+$\alpha^{(i)}(x_t) \in \mathbb{R}$ é o componente idiossincrático esperado do
 ativo $i$, $\beta^{(i)}(x_t) \in \mathbb{R}^K$ é o vetor de exposições fatoriais,
-$z_{t+1} \in \mathbb{R}^K$ é o vetor de $K$ fatores latentes e
-$\varepsilon_{t+1}^{(i)}$ é o resíduo idiossincrático com média zero. A notação
-funcional $\alpha(x_t)$ e $\beta(x_t)$ explicita que essas quantidades são funções
-aprendidas do tensor de características $x_t$, e não parâmetros fixos estimados por
-regressão.
+$z \in \mathbb{R}^K$ é o vetor de $K$ fatores latentes e $\varepsilon^{(i)}$ é o
+resíduo idiossincrático com média zero. O índice temporal foi omitido das quantidades
+do lado direito para clareza notacional, dado que o modelo opera sobre um único
+cross-section por vez. A notação funcional $\alpha(x_t)$ e $\beta(x_t)$ explicita que
+essas quantidades são funções aprendidas do tensor de características $x_t$, e não
+parâmetros fixos estimados por regressão.
 
 O modelo é composto por quatro blocos. O Feature Extractor comprime a janela temporal
 de características de cada ativo em um embedding de dimensão fixa. Dois módulos
@@ -487,17 +489,9 @@ prior do Predictor. Para duas gaussianas diagonais de dimensão $K$, tem forma f
 
 Minimizar esse termo força o Predictor, que não vê retornos futuros, a produzir uma
 distribuição consistente com a que o Encoder considera ótima. A escolha de tomar a
-\emph{média} sobre as $K$ dimensões em vez da soma diverge da especificação original
-de \textcite{duan2022}, que soma sobre os fatores. A média foi adotada deliberadamente
-como mecanismo de balanceamento numérico: a NLL é por construção a média sobre os
-$N_t$ ativos do cross-section, de modo que somar o termo KL sobre $K$ fatores faria
-com que o KL crescesse linearmente com $K$ em relação à NLL, deslocando o balanço do
-ELBO em favor da regularização e penalizando excessivamente a posterior. Com $K = 8$ e
-$N_t$ variando tipicamente entre 130 e 280 no universo brasileiro, a razão $N_t/K$
-situa-se entre 16 e 35: somar o KL sobre as $K$ dimensões multiplicaria seu peso
-relativo à NLL por esse fator; a média preserva $\gamma$ como razão interpretável
-diretamente entre os dois termos. Essa é uma adaptação consciente em relação ao paper,
-não uma prática padrão.
+média sobre as $K$ dimensões em vez da soma, conforme a especificação original de
+\textcite{duan2022}, é equivalente a uma reparametrização do peso $\gamma$ e mantém o
+coeficiente interpretável diretamente como razão entre os termos do ELBO.
 
 A implementação inclui ainda um mecanismo opcional de \textit{free bits}, que
 estabelece um piso de KL por dimensão latente abaixo do qual o gradiente do termo KL é
@@ -666,11 +660,11 @@ As métricas de performance reportadas no Capítulo~\ref{cap:resultados} são o 
 (computada do desvio-padrão diário multiplicado por $\sqrt{252}$), o Índice de Sharpe,
 o drawdown máximo e o \textit{Information Ratio} em relação ao benchmark. O Índice de
 Sharpe utiliza taxa de referência constante de 10\% a.a. ao longo de todo o período de
-teste; a Selic variou substancialmente no intervalo, de 2\% em 2021 a mais de 13\% em
-2022--2023, e usar uma taxa fixa simplifica a comparação entre subperíodos ao custo de
-pequena distorção em janelas extremas, com 10\% representando uma aproximação razoável
-do nível médio observado. O benchmark utilizado é o Ibovespa, índice de referência do
-mercado brasileiro composto pelas ações mais negociadas na B3.
+teste; a Selic variou substancialmente no intervalo, de 2\% em 2020--2021 a 13{,}75\%
+em 2022--2023, e usar uma taxa fixa simplifica a comparação entre subperíodos ao custo
+de pequena distorção em janelas extremas, com 10\% representando uma aproximação
+razoável do nível médio observado. O benchmark utilizado é o Ibovespa, índice de
+referência do mercado brasileiro composto pelas ações mais negociadas na B3.
 
 A variante TDrisk substitui $\hat{\mu}_y^{(i)}$ por $\hat{\mu}_y^{(i)} - \eta\,
 \hat{\sigma}_y^{(i)}$ no critério de seleção, com $\eta = 1{,}0$. A modificação

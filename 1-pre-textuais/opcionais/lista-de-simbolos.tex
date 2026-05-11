@@ -1,12 +1,25 @@
 % lista-de-simbolos.tex
 \begin{simbolos} \itemsep -1pt
+  \item[$ C $]                Número de características por ativo por período
+  \item[$ H $]                Dimensão das representações internas (estados ocultos e MLPs)
+  \item[$ K $]                Número de fatores latentes
+  \item[$ M $]                Número de portfólios internos do codificador
+  \item[$ N_t $]              Número de ativos no \textit{cross-section} da data $t$
+  \item[$ T $]                Comprimento da janela temporal em dias úteis
+  \item[$ c $]                Custo unitário de transação \textit{one-way}
+  \item[$ k $]                Número de ativos selecionados na estratégia TopK-Drop
+  \item[$ n $]                Número máximo de substituições do portfólio por dia
+  \item[$ z $]                Vetor de fatores latentes
   \item[$ \alpha $]           Componente idiossincrático esperado do retorno de um ativo
   \item[$ \beta $]            Matriz de exposições fatoriais
+  \item[$ \gamma $]           Peso do termo KL na função objetivo
   \item[$ \varepsilon $]      Resíduo idiossincrático
   \item[$ \zeta $]            Coeficiente de inclinação negativa da LeakyReLU ($\zeta = 0{,}1$)
+  \item[$ \eta $]             Coeficiente de penalização por incerteza no critério TDrisk
   \item[$ \mu $]              Média de uma distribuição gaussiana
+  \item[$ \rho $]             Correlação de Spearman
   \item[$ \sigma $]           Desvio-padrão; também função sigmoide (equações da GRU)
-  \item[$ \gamma $]           Peso do termo KL na função objetivo
+  \item[$ \phi $]             Parâmetros das redes neurais ($\phi_{\text{enc}}, \phi_{\text{pred}}, \phi_{\text{dec}}, \phi_{\text{feat}}$)
   \item[$ \odot $]            Produto de Hadamard (multiplicação elemento a elemento)
   \item[$ \mathcal{L} $]      Função objetivo (negativo do ELBO)
   \item[$ \mathcal{N} $]      Distribuição normal (gaussiana)
