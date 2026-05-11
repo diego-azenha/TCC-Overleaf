@@ -18,53 +18,47 @@
 ]
 
 %% ── TÍTULOS DAS COLUNAS ──────────────────────────────────────────
-\node[font=\small\bfseries, align=center] at (0.0, 3.35)
+\node[font=\small\bfseries, align=center] at (0.0, 3.65)
     {Embeddings do\\[-2pt]cross-section};
-\node[font=\small\bfseries, align=center] at (3.6, 3.35)
+\node[font=\small\bfseries, align=center] at (3.6, 3.65)
     {Attention\\[-2pt]multi-head};
-\node[font=\small\bfseries, align=center] at (9.5, 3.35)
+\node[font=\small\bfseries, align=center] at (9.5, 3.82)
     {Fatores a priori};
 
 %% ── COLUNA 1: EMBEDDINGS ────────────────────────────────────────
-\node[tensor] (e1) at (0.0,  2.3) {$e^{(1)}$};
-\node[font=\scriptsize] at   (0.0,  1.8) {$\vdots$};
-\node[tensor] (ei) at (0.0,  1.3) {$e^{(i)}$};
-\node[font=\scriptsize] at   (0.0,  0.8) {$\vdots$};
-\node[tensor] (eN) at (0.0,  0.3) {$e^{(N)}$};
+\node[tensor] (e1) at (0.0,  2.6) {$e^{(1)}$};
+\node[font=\scriptsize] at   (0.0,  2.1) {$\vdots$};
+\node[tensor] (ei) at (0.0,  1.6) {$e^{(i)}$};
+\node[font=\scriptsize] at   (0.0,  1.1) {$\vdots$};
+\node[tensor] (eN) at (0.0,  0.6) {$e^{(N)}$};
 
 %% ── COLUNA 2: CABEÇAS DE ATENÇÃO ─────────────────────────────────
 % Três cabeças representativas com preenchimento gradual em coral
-\node[head, fill=CoralL]     (h1) at (3.6, 2.3)  {$h^{(1)}$};
-\node[head, fill=CoralL!65]  (h2) at (3.6, 1.65) {$h^{(2)}$};
-\node[font=\scriptsize] at   (3.6, 1.1)           {$\vdots$};
-\node[head, fill=CoralL!35]  (hK) at (3.6, 0.55) {$h^{(K)}$};
+\node[head, fill=CoralL]     (h1) at (3.6, 2.6) {$h^{(1)}$};
+\node[head, fill=CoralL!65]  (h2) at (3.6, 1.8) {$h^{(2)}$};
+\node[font=\scriptsize] at   (3.6, 1.3)          {$\vdots$};
+\node[head, fill=CoralL!35]  (hK) at (3.6, 0.8) {$h^{(K)}$};
 
 %% ── REDE DE DISTRIBUIÇÃO (bloco vertical, texto rotacionado) ─────
-% Bloco cobre exatamente os níveis y de saída: de -1.3 a 2.7
-% centro em y = (2.7 + (-1.3))/2 = 0.7, altura = 4.0 + 2×0.25 = 4.5cm
+% Bloco cobre os níveis y de saída (com folga) para evitar sobreposição.
 \node[draw=CoralD, very thick, chamfered rectangle,
       chamfered rectangle xsep=0.22cm, fill=CoralL,
-      minimum width=1.1cm, minimum height=4.5cm, align=center]
-    (dist) at (6.5, 0.7)
+      minimum width=1.1cm, minimum height=5.5cm, align=center]
+    (dist) at (6.5, 0.6)
     {\rotatebox{90}{\small Rede de distribuição $\pi_{\text{prior}}$}};
 
 %% ── COLUNA 3: FATORES PRIORES ────────────────────────────────────
-% y positions calculadas para arrows saírem horizontais do dist block:
-% dist center = 0.7; yshift = target_y - 0.7
-% μ: yshift = {+2.0, +1.2, +0.4} => y = {2.7, 1.9, 1.1}
-% σ: yshift = {-0.4, -1.2, -2.0} => y = {0.3, -0.5, -1.3}
-
 % μ group
-\node[rv, fill=CoralL]     (mu1)  at (9.5,  2.7) {$\mu_{\text{prior}}^{(1)}$};
-\node[rv, fill=CoralL!65]  (mu2)  at (9.5,  1.9) {$\mu_{\text{prior}}^{(2)}$};
-\node[font=\scriptsize] at  (9.5,  1.4)           {$\vdots$};
-\node[rv, fill=CoralL!35]  (muK)  at (9.5,  0.9) {$\mu_{\text{prior}}^{(K)}$};
+\node[rv, fill=CoralL]     (mu1)  at (9.5,  3.1) {$\mu_{\text{prior}}^{(1)}$};
+\node[rv, fill=CoralL!65]  (mu2)  at (9.5,  2.1) {$\mu_{\text{prior}}^{(2)}$};
+\node[font=\scriptsize] at  (9.5,  1.6)          {$\vdots$};
+\node[rv, fill=CoralL!35]  (muK)  at (9.5,  1.1) {$\mu_{\text{prior}}^{(K)}$};
 
 % σ group
-\node[rv, fill=CoralL]     (sig1) at (9.5,  0.3) {$\sigma_{\text{prior}}^{(1)}$};
-\node[rv, fill=CoralL!65]  (sig2) at (9.5, -0.5) {$\sigma_{\text{prior}}^{(2)}$};
-\node[font=\scriptsize] at  (9.5, -1.0)           {$\vdots$};
-\node[rv, fill=CoralL!35]  (sigK) at (9.5, -1.5) {$\sigma_{\text{prior}}^{(K)}$};
+\node[rv, fill=CoralL]     (sig1) at (9.5,  0.1) {$\sigma_{\text{prior}}^{(1)}$};
+\node[rv, fill=CoralL!65]  (sig2) at (9.5, -0.9) {$\sigma_{\text{prior}}^{(2)}$};
+\node[font=\scriptsize] at  (9.5, -1.4)          {$\vdots$};
+\node[rv, fill=CoralL!35]  (sigK) at (9.5, -1.9) {$\sigma_{\text{prior}}^{(K)}$};
 
 %% ── SETAS: EMBEDDINGS → ATENÇÃO (linhas coloridas many-to-many) ──
 % Cores variando em saturação de CoralD para sugerir heads distintas
@@ -77,20 +71,20 @@
 \draw[CoralD!70, thick] (eN.east) -- (hK.west);
 
 %% ── SETAS: ATENÇÃO → REDE (entram horizontalmente) ──────────────
-\draw[->, CoralD, thick] (h1.east) -- ([yshift= 1.60cm]dist.west);
-\draw[->, CoralD, thick] (h2.east) -- ([yshift= 0.95cm]dist.west);
-\draw[->, CoralD, thick] (hK.east) -- ([yshift=-0.15cm]dist.west);
+\draw[->, CoralD, thick] (h1.east) -- ([yshift= 2.00cm]dist.west);
+\draw[->, CoralD, thick] (h2.east) -- ([yshift= 1.20cm]dist.west);
+\draw[->, CoralD, thick] (hK.east) -- ([yshift= 0.20cm]dist.west);
 
 %% ── SETAS: REDE → FATORES (saem horizontalmente) ────────────────
-\draw[->, CoralD, thick] ([yshift= 2.00cm]dist.east) -- (mu1.west);
-\draw[->, CoralD, thick] ([yshift= 1.20cm]dist.east) -- (mu2.west);
-\draw[->, CoralD, thick] ([yshift= 0.40cm]dist.east) -- (muK.west);
-\draw[->, CoralD, thick] ([yshift=-0.40cm]dist.east) -- (sig1.west);
-\draw[->, CoralD, thick] ([yshift=-1.20cm]dist.east) -- (sig2.west);
-\draw[->, CoralD, thick] ([yshift=-2.00cm]dist.east) -- (sigK.west);
+\draw[->, CoralD, thick] ([yshift= 2.50cm]dist.east) -- (mu1.west);
+\draw[->, CoralD, thick] ([yshift= 1.50cm]dist.east) -- (mu2.west);
+\draw[->, CoralD, thick] ([yshift= 0.50cm]dist.east) -- (muK.west);
+\draw[->, CoralD, thick] ([yshift=-0.50cm]dist.east) -- (sig1.west);
+\draw[->, CoralD, thick] ([yshift=-1.50cm]dist.east) -- (sig2.west);
+\draw[->, CoralD, thick] ([yshift=-2.50cm]dist.east) -- (sigK.west);
 
 %% ── RÓTULO ───────────────────────────────────────────────────────
-\node[font=\small, anchor=north] at (5.2, -2.1)
+\node[font=\small, anchor=north] at (5.2, -2.6)
     {(c) Factor Predictor};
 
 \end{tikzpicture}

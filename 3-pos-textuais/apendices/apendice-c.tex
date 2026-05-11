@@ -1,0 +1,39 @@
+\chapter{Hiperparâmetros e Configuração}
+\label{ap:hiperparametros}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Configuração completa do experimento.}
+    \label{tab:hiperparametros}
+    \begin{tabular}{lll}
+        \toprule
+        \textbf{Parâmetro} & \textbf{Valor} & \textbf{Descrição} \\
+        \midrule
+        \multicolumn{3}{l}{\textit{Arquitetura}} \\
+        $H$ (dim. oculta)      & 20  & Dimensão dos estados ocultos da GRU e das MLPs \\
+        $K$ (fatores)          & 8   & Número de fatores latentes \\
+        $M$ (portfólios)       & 16  & Portfólios do codificador \\
+        $T$ (janela temporal)  & 20  & Dias úteis de histórico por ativo \\
+        $C$ (características)  & 20  & Características por ativo por período \\
+        \midrule
+        \multicolumn{3}{l}{\textit{Otimizador}} \\
+        Algoritmo              & Adam  & --- \\
+        Learning rate          & $3 \times 10^{-4}$ & Fixo; sem agendamento \\
+        Weight decay           & $10^{-4}$          & Regularização L2 \\
+        Batch size             & 1 cross-section    & Uma data por passo \\
+        Épocas máximas         & 100   & Limite superior de épocas de treinamento \\
+        Paciência (ES)         & 15    & Épocas sem melhora no Rank IC de validação \\
+        \midrule
+        \multicolumn{3}{l}{\textit{Treinamento}} \\
+        \texttt{kl\_warmup\_steps}  & 500  & Passos de aquecimento do KL \\
+        $\gamma$ (peso KL)     & 1{,}0   & Peso da divergência KL na função de perda \\
+        \texttt{kl\_free\_bits}& 0     & Mecanismo de free bits desativado \\
+        Random seed            & 42    & Semente para reprodutibilidade \\
+        \midrule
+        \multicolumn{3}{l}{\textit{Hardware}} \\
+        GPU                    & ---   & RTX 3060 \\
+        Tempo de treinamento   & ---   & ~1 hora e 15 minutos \\
+        \bottomrule
+    \end{tabular}
+    \fonte{Elaboração própria.}
+\end{table}

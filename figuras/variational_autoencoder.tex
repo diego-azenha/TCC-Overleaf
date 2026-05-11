@@ -8,24 +8,23 @@
 \definecolor{CoralL}{HTML}{FAECE7}
 
 \begin{tikzpicture}[
-    font=\scriptsize,
-    neuron/.style={circle, draw, thick, minimum size=0.42cm, inner sep=0pt},
+    font=\small,
+    neuron/.style={circle, draw, thick, minimum size=0.52cm, inner sep=0pt},
     conn/.style={gray!28, thin},
 ]
 
 %% ── COORDENADAS ──────────────────────────────────────────────────
-%% Encoder: 5→4→3 | μ/σ (3+3) | z (3) | Decoder: 4→5
-%% Espaçamento vertical: 0.65cm; colunas a cada 1.5cm
-\foreach \i in {1,...,5}  \coordinate (I\i)   at (0.0, {(3.0-\i)*0.65});
-\foreach \i in {1,...,4}  \coordinate (Ea\i)  at (1.5, {(2.5-\i)*0.65});
-\foreach \i in {1,...,3}  \coordinate (Eb\i)  at (3.0, {(2.0-\i)*0.65});
-%% μ: 3 nós no bloco superior; σ: 3 nós no bloco inferior
-\foreach \i in {1,...,3}  \coordinate (MU\i)  at (4.6, {1.50-(\i-1)*0.55});
-\foreach \i in {1,...,3}  \coordinate (SIG\i) at (4.6, {-0.40-(\i-1)*0.55});
-%% z amostrado: 3 nós centralizados
-\foreach \i in {1,...,3}  \coordinate (Z\i)   at (6.3, {(2.0-\i)*0.65});
-\foreach \i in {1,...,4}  \coordinate (Da\i)  at (7.9, {(2.5-\i)*0.65});
-\foreach \i in {1,...,5}  \coordinate (O\i)   at (9.5, {(3.0-\i)*0.65});
+%% Mesmos parâmetros do autoencoder: neurônio 0.52cm, espaçamento 0.85cm
+%% Encoder: 5→4→3 | μ/σ (3+3) | Amostra z (3) | Decoder: 4→5
+\foreach \i in {1,...,5}  \coordinate (I\i)   at ( 0.0, {(3.0-\i)*0.85});
+\foreach \i in {1,...,4}  \coordinate (Ea\i)  at ( 2.0, {(2.5-\i)*0.85});
+\foreach \i in {1,...,3}  \coordinate (Eb\i)  at ( 4.0, {(2.0-\i)*0.85});
+%% μ: bloco superior; σ: bloco inferior; espaçamento 0.70cm
+\foreach \i in {1,...,3}  \coordinate (MU\i)  at ( 5.8, {1.70-(\i-1)*0.70});
+\foreach \i in {1,...,3}  \coordinate (SIG\i) at ( 5.8, {-0.30-(\i-1)*0.70});
+\foreach \i in {1,...,3}  \coordinate (Z\i)   at ( 7.6, {(2.0-\i)*0.85});
+\foreach \i in {1,...,4}  \coordinate (Da\i)  at ( 9.6, {(2.5-\i)*0.85});
+\foreach \i in {1,...,5}  \coordinate (O\i)   at (11.6, {(3.0-\i)*0.85});
 
 %% ── CONEXÕES (abaixo dos blocos e nós) ───────────────────────────
 \foreach \i in {1,...,5} \foreach \j in {1,...,4} \draw[conn] (I\i)   -- (Ea\j);
@@ -38,20 +37,20 @@
 \foreach \i in {1,...,4} \foreach \j in {1,...,5} \draw[conn] (Da\i)  -- (O\j);
 
 %% ── BLOCOS μ, σ, z (sobre conexões, abaixo dos nós) ─────────────
-%% μ: MU1=(4.6,1.50), MU3=(4.6,0.40) → caixa y=[0.10, 1.80]
+%% MU1=(5.8,1.70), MU3=(5.8,0.30) → caixa y=[0.05, 1.95]
 \draw[VioletD, thick, rounded corners=4pt, fill=VioletL!55]
-    (4.25, 0.10) rectangle (4.95, 1.80);
-\node[font=\scriptsize\bfseries, VioletD, anchor=south] at (4.60,  1.80) {$\mu$};
+    (5.50, 0.05) rectangle (6.10, 1.95);
+\node[font=\small\bfseries, VioletD, anchor=south] at (5.80, 1.95) {Média $\mu$};
 
-%% σ: SIG1=(4.6,−0.40), SIG3=(4.6,−1.50) → caixa y=[−1.80, −0.10]
+%% SIG1=(5.8,−0.30), SIG3=(5.8,−1.70) → caixa y=[−1.95, −0.05]
 \draw[CoralD, thick, rounded corners=4pt, fill=CoralL!55]
-    (4.25, -1.80) rectangle (4.95, -0.10);
-\node[font=\scriptsize\bfseries, CoralD, anchor=north] at (4.60, -1.80) {$\sigma$};
+    (5.50, -1.95) rectangle (6.10, -0.05);
+\node[font=\small\bfseries, CoralD, anchor=north] at (5.80, -1.95) {Desvio-padrão $\sigma$};
 
-%% z: Z1=(6.3,0.65), Z3=(6.3,−0.65) → caixa y=[−0.95, 0.95]
+%% Z1=(7.6,0.85), Z3=(7.6,−0.85) → caixa y=[−1.15, 1.15]
 \draw[GreenD, thick, rounded corners=4pt, fill=GreenL!55]
-    (5.95, -0.95) rectangle (6.65, 0.95);
-\node[font=\scriptsize\bfseries, GreenD, anchor=south] at (6.30,  0.95) {$z$};
+    (7.28, -1.15) rectangle (7.92, 1.15);
+\node[font=\small\bfseries, GreenD, anchor=south] at (7.60, 1.15) {Amostragem};
 
 %% ── NÓS (sobre os blocos) ────────────────────────────────────────
 \foreach \i in {1,...,5} {
@@ -71,12 +70,12 @@
 
 %% ── RÓTULOS x_i e x̂_i ──────────────────────────────────────────
 \foreach \i in {1,...,5} {
-    \node[font=\scriptsize, anchor=east]  at ($(I\i)+(-0.27,0)$) {$x_\i$};
-    \node[font=\scriptsize, anchor=west] at ($(O\i)+(0.27,0)$) {$\hat{x}_\i$};
+    \node[font=\scriptsize, anchor=east]  at ($(I\i)+(-0.32,0)$) {$x_\i$};
+    \node[font=\scriptsize, anchor=west] at ($(O\i)+(0.32,0)$) {$\hat{x}_\i$};
 }
 
 %% ── TÍTULOS ──────────────────────────────────────────────────────
-\node[font=\scriptsize\bfseries, anchor=south] at (0.0, 1.65) {Entrada};
-\node[font=\scriptsize\bfseries, anchor=south] at (9.5, 1.65) {Saída};
+\node[font=\small\bfseries, anchor=south] at ( 0.0, 2.25) {Entrada};
+\node[font=\small\bfseries, anchor=south] at (11.6, 2.25) {Saída};
 
 \end{tikzpicture}

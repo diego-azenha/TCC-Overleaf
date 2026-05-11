@@ -112,10 +112,14 @@ arquitetura completa do \textit{FactorVAE} é especificada no Capítulo~\ref{cap
 \section{Variational Autoencoders}
 \label{sec:vae}
 
-Um autoencoder determinístico aprende uma função de compressão e reconstrução ponto a ponto: dado
-um vetor de entrada $x$, o codificador produz um único ponto $z$ no espaço latente, e o
-decodificador reconstrói $x$ a partir desse ponto. A representação latente é determinística --- a
-mesma entrada produz sempre o mesmo $z$. 
+Um autoencoder é uma arquitetura de rede neural que aprende a comprimir e reconstruir
+dados em dois estágios encadeados. O codificador mapeia cada observação de entrada $x$
+a um vetor $z$ em um espaço latente de dimensão reduzida; o decodificador reconstrói
+$x$ a partir desse vetor, conforme ilustrado na Figura~\ref{fig:autoencoder}. O
+treinamento minimiza o erro de reconstrução, forçando $z$ a reter apenas a informação
+necessária para recuperar a entrada com fidelidade. A representação latente é
+inteiramente determinística: a mesma entrada produz sempre o mesmo ponto $z$, e o
+modelo não possui nenhum mecanismo para expressar incerteza sobre essa compressão.
 
 \begin{figure}[ht]
     \centering
@@ -124,11 +128,16 @@ mesma entrada produz sempre o mesmo $z$.
     \label{fig:autoencoder}
 \end{figure}
 
-Um autoencoder variacional \parencite{kingma2014}, por
-contraste, aprende uma distribuição sobre o espaço latente: dado $x$, o codificador produz os
-parâmetros $(\mu_\phi(x),\, \sigma_\phi(x))$ de uma gaussiana $q_\phi(z|x)$, e a representação
-latente é amostrada dessa distribuição a cada passagem pelo modelo. A representação de $x$ não é
-um ponto fixo, mas uma região do espaço latente com forma e incerteza aprendidas.
+Um autoencoder variacional \parencite{kingma2014} modifica esse ponto de partida de
+forma precisa e consequente: em vez de produzir um único ponto no espaço latente, o
+codificador produz os parâmetros de uma distribuição gaussiana sobre esse espaço, uma
+média $\mu_\phi(x)$ e um desvio-padrão $\sigma_\phi(x)$. A representação latente $z$
+é então amostrada dessa distribuição antes de ser passada ao decodificador, conforme
+ilustrado na Figura~\ref{fig:variational_autoencoder}. A consequência direta é que $x$
+não é mais representado por um ponto fixo, mas por uma região do espaço latente cuja
+extensão reflete a incerteza do codificador: quanto mais difícil for comprimir $x$ de
+forma inequívoca, maior será o desvio-padrão aprendido e mais difusa será a
+distribuição sobre $z$.
 
 \begin{figure}[ht]
     \centering
@@ -137,75 +146,45 @@ um ponto fixo, mas uma região do espaço latente com forma e incerteza aprendid
     \label{fig:variational_autoencoder}
 \end{figure}
 
-Essa distinção tem consequências diretas em dados financeiros. Retornos de ações têm razão
-sinal-ruído muito baixa: boa parte da variação diária não é explicada por nenhuma fonte sistemática
-identificável, e o sinal preditivo genuíno é fraco e não estacionário. Um codificador determinístico
-aplicado a esse contexto comprime a incerteza num único ponto, descartando a informação sobre quão
-ambígua é a representação. Um codificador variacional preserva essa informação: uma variância alta
-em $q_\phi(z|x)$ sinaliza que os dados não determinam $z$ com precisão, o que no contexto do
-\textit{FactorVAE} equivale a dizer que os fatores latentes são ambíguos naquela data de previsão.
-Essa incerteza pode ser propagada analiticamente até a distribuição preditiva dos retornos,
-produzindo estimativas de risco por ativo que refletem tanto a variabilidade idiossincrática quanto
-a incerteza sobre as fontes sistemáticas de risco.
+Essa propriedade é especialmente relevante para dados financeiros. O retorno diário de
+uma ação é determinado pela combinação de um sinal sistemático fraco, potencialmente
+explicável por fatores comuns, e de uma componente idiossincrática de magnitude muito
+superior, não atribuível a nenhuma fonte estrutural identificável. Um codificador
+determinístico aplicado a esse contexto é forçado a comprimir tanto o sinal quanto o
+ruído em um único ponto, sem qualquer distinção entre o que é informativo e o que é
+variação espúria. Um codificador variacional acomoda essa ambiguidade naturalmente:
+quando os dados não determinam a representação latente com precisão, o modelo aprende
+um desvio-padrão alto em vez de arbitrar um ponto sem fundamento. No contexto do
+\textit{FactorVAE}, isso significa que a incerteza sobre os fatores latentes em cada
+data de previsão é representada explicitamente como parte do modelo e pode ser
+propagada analiticamente até a distribuição preditiva dos retornos por ativo, gerando
+estimativas de risco sem custo computacional adicional.
 
-O treinamento de um VAE exige maximizar a verossimilhança marginal das observações,
-$\log p(x) = \log \int p(x|z)\,p(z)\,\mathrm{d}z$. Quando o decodificador $p_\theta(x|z)$ é
-parametrizado por uma rede neural não-linear, essa integral é intratável: não existe forma fechada
-e a avaliação por Monte Carlo requer um número impraticável de amostras para produzir estimativas
-de gradiente com variância baixa o suficiente para o treinamento convergir. A solução de
-\textcite{kingma2014} é substituir a maximização direta de $\log p(x)$ pela maximização de um
-limite inferior tratável, o \textit{Evidence Lower Bound} (ELBO). A derivação parte de introduzir
-a distribuição aproximada $q_\phi(z|x)$ --- o codificador --- e manipular $\log p(x)$ para isolar
-um termo que depende apenas de $q_\phi$ e dos parâmetros do decodificador:
+O treinamento de um VAE requer maximizar a verossimilhança marginal das observações,
+o que é intratável quando o decodificador é uma rede neural não-linear: a integral
+sobre o espaço latente não admite forma fechada. A solução de \textcite{kingma2014}
+é otimizar um limite inferior computacionalmente tratável, o \textit{Evidence Lower
+Bound} (ELBO), que combina um termo de qualidade de reconstrução com uma divergência
+de Kullback-Leibler entre a posterior aprendida pelo codificador e uma prior sobre o
+espaço latente. O termo de reconstrução pressiona $z$ a ser informativo; o termo KL
+atua como regularizador, impedindo que o codificador fragmente o espaço latente ao
+alocar cada entrada em uma região isolada sem estrutura global. Quando ambas as
+distribuições são gaussianas, o KL tem expressão analítica fechada, o que estabiliza
+o treinamento, e a dependência da amostragem nos parâmetros é removida pelo truque
+de reparametrização, que torna o gradiente computável por retropropagação padrão. A
+forma operacional do ELBO, com todas as equações relevantes, é apresentada na
+Subseção~\ref{subsec:funcao-objetivo}.
 
-\begin{equation}
-    \log p(x) \;\geq\; \underbrace{\mathbb{E}_{q_\phi(z|x)}\!\left[\log p_\theta(x|z)\right]}_{\text{qualidade de reconstrução}} \;-\; \underbrace{\mathrm{KL}\!\left(q_\phi(z|x) \,\|\, p(z)\right)}_{\text{regularização}}
-    \label{eq:elbo}
-\end{equation}
-
-\noindent Maximizar o ELBO em relação a $\phi$ e $\theta$ tem o efeito de simultaneamente
-maximizar uma cota inferior de $\log p(x)$ e minimizar a discrepância entre a posterior aproximada
-$q_\phi(z|x)$ e a prior $p(z)$.
-
-Os dois termos do ELBO têm papéis opostos e complementares. O primeiro, a log-verossimilhança
-esperada, mede a qualidade da reconstrução: favorece representações $z$ a partir das quais o
-decodificador consegue recuperar $x$ com alta probabilidade. O segundo, a divergência de
-Kullback-Leibler entre a posterior aproximada e a prior, atua como regularizador: penaliza
-distribuições $q_\phi(z|x)$ que se afastam demais da prior $p(z)$, evitando que o codificador
-aprenda representações latentes arbitrariamente distantes umas das outras sem estrutura global.
-Quando ambas as distribuições são gaussianas diagonais --- $q_\phi(z|x) = \mathcal{N}(\mu_\phi,
-\mathrm{diag}(\sigma_\phi^2))$ e $p(z) = \mathcal{N}(0, I)$ --- o KL admite expressão analítica:
-
-\begin{equation}
-    \mathrm{KL}\!\left(q_\phi \,\|\, p\right) = \frac{1}{2} \sum_{j=1}^{d} \!\left(
-        \mu_{\phi,j}^2 + \sigma_{\phi,j}^2 - 1 - \log \sigma_{\phi,j}^2
-    \right)
-    \label{eq:kl-closed}
-\end{equation}
-
-\noindent O cálculo é puramente algébrico, sem amostragem, o que elimina uma fonte de variância do
-estimador de gradiente e torna o treinamento numericamente mais estável.
-
-O ELBO contém, porém, uma esperança em relação a $q_\phi(z|x)$ que depende dos próprios parâmetros
-$\phi$ a otimizar. Amostrar $z \sim q_\phi(z|x)$ diretamente introduz uma operação estocástica no
-grafo computacional que bloqueia o fluxo do gradiente até $\phi$, tornando a otimização por
-\textit{backpropagation} inviável. O truque de reparametrização de \textcite{kingma2014} resolve
-esse problema reescrevendo a amostragem como $z = \mu_\phi(x) + \sigma_\phi(x) \odot \epsilon$,
-onde $\epsilon \sim \mathcal{N}(0, I)$ é ruído independente dos parâmetros. Com essa mudança de
-variável, a dependência de $z$ em $\phi$ torna-se explícita e diferenciável no sentido
-convencional, e o gradiente do ELBO em relação a $\phi$ pode ser computado por \textit{backpropagation}
-padrão, usando uma única amostra de $\epsilon$ por observação como estimador de baixa variância da
-esperança.
-
-No VAE padrão, a prior $p(z) = \mathcal{N}(0, I)$ é fixa, e o KL da Equação~\ref{eq:kl-closed}
-penaliza diretamente o quanto a posterior se afasta dela. Quando a prior é ela mesma parametrizada
-por uma rede --- como no \textit{FactorVAE} --- o KL compara duas gaussianas com parâmetros
-distintos e os gradientes fluem de volta à rede que parametriza a prior durante o treinamento. Esse
-é o mecanismo que torna possível o esquema professor-aluno do \textit{FactorVAE}: o preditor, que
-parametriza a prior, e o codificador, que parametriza a posterior, são treinados conjuntamente, e
-a minimização do KL força a prior do preditor a aproximar a posterior do codificador. O preditor
-aprende, portanto, a distribuição que o codificador teria produzido com acesso privilegiado aos
-retornos contemporâneos, mas usando apenas informação histórica.
+No VAE padrão, a prior é fixa e o KL penaliza o afastamento da posterior em relação
+a ela. No \textit{FactorVAE}, a prior é parametrizada por uma rede --- o Preditor
+--- que opera apenas com dados históricos. O KL passa a comparar duas distribuições
+aprendidas: a posterior do Encoder, informada pelos retornos contemporâneos, e a
+prior do Preditor, restrita ao passado. Minimizar esse termo durante o treinamento
+força o Preditor a imitar o Encoder: o aluno aprende a distribuição que o professor,
+com acesso privilegiado ao futuro, teria produzido. É esse mecanismo que conecta o
+arcabouço variacional ao esquema professor-aluno e que distingue o
+\textit{FactorVAE} de uma aplicação direta de VAE ao problema de previsão de
+retornos.
 
 
 \section{O Modelo FactorVAE}
